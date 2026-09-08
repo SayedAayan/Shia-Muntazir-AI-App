@@ -1,0 +1,10 @@
+{
+  "appTitle": "Muntazir",
+  "@appTitle": {
+    "description": "The title of the application"
+  },
+  "welcomeMessage": "Welcome to Muntazir",
+  "@welcomeMessage": {
+    "description": "Welcome message shown on the home screen"
+  }
+}
