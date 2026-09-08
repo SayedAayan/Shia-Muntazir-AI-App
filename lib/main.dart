@@ -69,16 +69,16 @@ class MuntazirApp extends ConsumerWidget {
       brightness: Brightness.light,
       colorScheme: ColorScheme.fromSeed(
         brightness: Brightness.light,
-        seedColor: const Color(0xFF1B3B5A),
-        primary: const Color(0xFF1B3B5A),
+        seedColor: const Color(0xFF070D18),
+        primary: const Color(0xFF0F2942),
         secondary: const Color(0xFFD4AF37),
         surface: Colors.white,
       ),
-      scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+      scaffoldBackgroundColor: const Color(0xFFF7F9FC),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: Color(0xFF1B3B5A),
+        foregroundColor: Color(0xFF0F2942),
       ),
       useMaterial3: true,
     );
@@ -89,16 +89,16 @@ class MuntazirApp extends ConsumerWidget {
       brightness: Brightness.dark,
       colorScheme: ColorScheme.fromSeed(
         brightness: Brightness.dark,
-        seedColor: const Color(0xFF1B3B5A),
-        primary: const Color(0xFF4A90E2),
-        secondary: const Color(0xFFD4AF37),
-        surface: const Color(0xFF141D26),
+        seedColor: const Color(0xFF070D18),
+        primary: const Color(0xFFE2C374), // Champagne Gold
+        secondary: const Color(0xFF00C48C), // Emerald Accent
+        surface: const Color(0xFF0D172A), // Dark Sapphire Glass
       ),
-      scaffoldBackgroundColor: const Color(0xFF0D141C),
+      scaffoldBackgroundColor: const Color(0xFF070D18), // Imperial Obsidian
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: Colors.white,
+        foregroundColor: Color(0xFFE2C374),
       ),
       useMaterial3: true,
     );
