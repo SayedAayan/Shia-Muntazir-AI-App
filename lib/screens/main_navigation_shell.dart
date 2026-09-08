@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'home/home_screen.dart';
 import 'quran_duas/quran_duas_screen.dart';
@@ -36,82 +35,66 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    const activeColor = Color(0xFFC27351); // Terracotta from screenshot
+    final inactiveColor = isDark ? Colors.grey[500] : Colors.grey[600];
 
     return Scaffold(
-      extendBody: true, // Enables floating glass dock over body content
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
       ),
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          height: 68,
-          decoration: BoxDecoration(
-            color: (isDark ? const Color(0xFF0D172A) : Colors.white).withValues(alpha: 0.85),
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(
-              color: const Color(0xFFE2C374).withValues(alpha: isDark ? 0.3 : 0.4),
-              width: 1.2,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF10161E) : const Color(0xFFFBF9F4),
+          border: Border(
+            top: BorderSide(
+              color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
+              width: 1,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.1),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-              if (isDark)
-                BoxShadow(
-                  color: const Color(0xFFE2C374).withValues(alpha: 0.08),
-                  blurRadius: 16,
-                  spreadRadius: 1,
-                ),
-            ],
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(32),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildNavItem(
-                    index: 0,
-                    icon: Icons.local_fire_department_outlined,
-                    activeIcon: Icons.local_fire_department_rounded,
-                    label: 'Streaks',
-                    isDark: isDark,
-                  ),
-                  _buildNavItem(
-                    index: 1,
-                    icon: Icons.auto_stories_outlined,
-                    activeIcon: Icons.auto_stories_rounded,
-                    label: 'Quran & Duas',
-                    isDark: isDark,
-                  ),
-                  _buildNavItem(
-                    index: 2,
-                    icon: Icons.chat_bubble_outline_rounded,
-                    activeIcon: Icons.chat_bubble_rounded,
-                    label: 'Ask',
-                    isDark: isDark,
-                  ),
-                  _buildNavItem(
-                    index: 3,
-                    icon: Icons.people_outline_rounded,
-                    activeIcon: Icons.people_rounded,
-                    label: 'Community',
-                    isDark: isDark,
-                  ),
-                  _buildNavItem(
-                    index: 4,
-                    icon: Icons.person_outline_rounded,
-                    activeIcon: Icons.person_rounded,
-                    label: 'Profile',
-                    isDark: isDark,
-                  ),
-                ],
-              ),
+        ),
+        child: SafeArea(
+          child: SizedBox(
+            height: 64,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(
+                  index: 0,
+                  icon: Icons.home_rounded,
+                  label: 'Today',
+                  activeColor: activeColor,
+                  inactiveColor: inactiveColor,
+                ),
+                _buildNavItem(
+                  index: 1,
+                  icon: Icons.menu_book_rounded,
+                  label: 'Library',
+                  activeColor: activeColor,
+                  inactiveColor: inactiveColor,
+                ),
+                _buildNavItem(
+                  index: 2,
+                  icon: Icons.chat_bubble_outline_rounded,
+                  label: 'Ask',
+                  activeColor: activeColor,
+                  inactiveColor: inactiveColor,
+                ),
+                _buildNavItem(
+                  index: 3,
+                  icon: Icons.groups_rounded,
+                  label: 'Around you',
+                  activeColor: activeColor,
+                  inactiveColor: inactiveColor,
+                ),
+                _buildNavItem(
+                  index: 4,
+                  icon: Icons.account_circle_outlined,
+                  label: 'Profile',
+                  activeColor: activeColor,
+                  inactiveColor: inactiveColor,
+                ),
+              ],
             ),
           ),
         ),
@@ -122,47 +105,34 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   Widget _buildNavItem({
     required int index,
     required IconData icon,
-    required IconData activeIcon,
     required String label,
-    required bool isDark,
+    required Color activeColor,
+    required Color? inactiveColor,
   }) {
     final isSelected = _currentIndex == index;
 
     return InkWell(
       onTap: () => setState(() => _currentIndex = index),
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        constraints: const BoxConstraints(minWidth: 48, minHeight: 48), // min 48dp
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        constraints: const BoxConstraints(minWidth: 56, minHeight: 48),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isSelected
-                    ? const Color(0xFFE2C374).withValues(alpha: 0.2)
-                    : Colors.transparent,
-              ),
-              child: Icon(
-                isSelected ? activeIcon : icon,
-                color: isSelected
-                    ? const Color(0xFFE2C374)
-                    : (isDark ? Colors.grey[400] : Colors.grey[600]),
-                size: isSelected ? 24 : 22,
-              ),
+            Icon(
+              icon,
+              color: isSelected ? activeColor : inactiveColor,
+              size: 24,
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 3),
             Text(
               label,
               style: TextStyle(
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected
-                    ? const Color(0xFFE2C374)
-                    : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? activeColor : inactiveColor,
               ),
             ),
           ],

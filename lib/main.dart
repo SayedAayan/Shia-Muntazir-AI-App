@@ -69,16 +69,16 @@ class MuntazirApp extends ConsumerWidget {
       brightness: Brightness.light,
       colorScheme: ColorScheme.fromSeed(
         brightness: Brightness.light,
-        seedColor: const Color(0xFF070D18),
-        primary: const Color(0xFF0F2942),
-        secondary: const Color(0xFFD4AF37),
+        seedColor: const Color(0xFF1B2A3D),
+        primary: const Color(0xFF1B2A3D),
+        secondary: const Color(0xFFC27351), // Warm Terracotta
         surface: Colors.white,
       ),
-      scaffoldBackgroundColor: const Color(0xFFF7F9FC),
+      scaffoldBackgroundColor: const Color(0xFFFBF9F4), // Warm Ivory Linen
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Color(0xFFFBF9F4),
         elevation: 0,
-        foregroundColor: Color(0xFF0F2942),
+        foregroundColor: Color(0xFF1B2A3D),
       ),
       useMaterial3: true,
     );
@@ -89,16 +89,16 @@ class MuntazirApp extends ConsumerWidget {
       brightness: Brightness.dark,
       colorScheme: ColorScheme.fromSeed(
         brightness: Brightness.dark,
-        seedColor: const Color(0xFF070D18),
-        primary: const Color(0xFFE2C374), // Champagne Gold
-        secondary: const Color(0xFF00C48C), // Emerald Accent
-        surface: const Color(0xFF0D172A), // Dark Sapphire Glass
+        seedColor: const Color(0xFF1B2A3D),
+        primary: Colors.white,
+        secondary: const Color(0xFFC27351), // Warm Terracotta
+        surface: const Color(0xFF17202C), // Deep Navy Slate Card
       ),
-      scaffoldBackgroundColor: const Color(0xFF070D18), // Imperial Obsidian
+      scaffoldBackgroundColor: const Color(0xFF10161E), // Dark Obsidian Slate
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Color(0xFF10161E),
         elevation: 0,
-        foregroundColor: Color(0xFFE2C374),
+        foregroundColor: Colors.white,
       ),
       useMaterial3: true,
     );
