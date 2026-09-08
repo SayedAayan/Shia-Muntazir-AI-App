@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'firebase_options.dart';
 import 'providers/theme_provider.dart';
 import 'routes/app_router.dart';
+import 'services/content_seeder.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +22,13 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Auto-seed initial real content library in Firestore
+  try {
+    await ContentSeeder.seedContentToFirestore();
+  } catch (e) {
+    debugPrint('Content seeding note: $e');
+  }
 
   runApp(const ProviderScope(child: MuntazirApp()));
 }
