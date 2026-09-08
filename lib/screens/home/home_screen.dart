@@ -12,385 +12,298 @@ class HomeScreen extends ConsumerWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF070D18) : const Color(0xFFF7F9FC),
-      appBar: AppBar(
-        titleSpacing: 20,
-        title: Row(
-          children: [
-            Text(
-              'Muntazir',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 24,
-                letterSpacing: 1.2,
-                color: isDark ? const Color(0xFFE2C374) : const Color(0xFF0F2942),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'مُنتَظِر',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w500,
-                color: isDark ? const Color(0xFFE2C374).withValues(alpha: 0.8) : Colors.grey[700],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.notifications_none_rounded,
-              color: isDark ? const Color(0xFFE2C374) : Colors.black87,
-            ),
-            onPressed: () {},
-            tooltip: 'Notifications',
+      backgroundColor: isDark ? const Color(0xFF070D18) : const Color(0xFFF9F7F2),
+      body: SafeArea(
+        child: userProfileAsync.when(
+          data: (user) {
+            final greetingName = user?.name.isNotEmpty == true ? user!.name : 'Believer';
+
+            return ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+              children: [
+                // Top Big Greeting & Date (Senior-friendly & High-contrast)
+                Text(
+                  'Salam, $greetingName',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Friday, 15 Sha\'ban 1448',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? const Color(0xFFE2C374) : const Color(0xFF946200),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Card 1: Big Streak Card
+                _buildStreakCard(isDark),
+                const SizedBox(height: 16),
+
+                // Card 2: Big Shia Prayer Window Card
+                _buildPrayerCard(isDark),
+                const SizedBox(height: 16),
+
+                // Card 3: Big Sacred Dua / Routine Card
+                _buildDuaCard(isDark),
+                const SizedBox(height: 80), // Padding for floating navigation dock
+              ],
+            );
+          },
+          loading: () => const Center(
+            child: CircularProgressIndicator(color: Color(0xFFE2C374)),
           ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: userProfileAsync.when(
-        data: (user) {
-          final greetingName = user?.name.isNotEmpty == true ? user!.name : 'Believer';
-
-          return ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-            children: [
-              // Hero Radial Streak Ring Card
-              _buildRadialStreakHero(greetingName, isDark),
-              const SizedBox(height: 20),
-
-              // Active Spiritual Routines Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Daily Spiritual Routines',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.add_rounded, size: 18, color: Color(0xFFE2C374)),
-                    label: const Text(
-                      'Add Goal',
-                      style: TextStyle(color: Color(0xFFE2C374), fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              // Glassmorphic Routine Card 1: Dua-e-Ahad
-              _buildRoutineCard(
-                title: 'Dua-e-Ahad',
-                category: 'Morning Routine • After Fajr',
-                status: 'Completed',
-                isCompleted: true,
-                isDark: isDark,
-              ),
-              const SizedBox(height: 12),
-
-              // Glassmorphic Routine Card 2: Ziyarat Ale-Yasin
-              _buildRoutineCard(
-                title: 'Ziyarat of Imam Husayn (as)',
-                category: 'Daily Spiritual Connection',
-                status: 'Pending',
-                isCompleted: false,
-                isDark: isDark,
-              ),
-              const SizedBox(height: 20),
-
-              // Shia Prayer Tracker Pill Bar
-              _buildPrayerTrackerPill(isDark),
-              const SizedBox(height: 30),
-            ],
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFFE2C374))),
-        error: (err, _) => Center(child: Text('Error: $err')),
+          error: (err, _) => Center(child: Text('Error: $err')),
+        ),
       ),
     );
   }
 
-  Widget _buildRadialStreakHero(String greetingName, bool isDark) {
+  /// Big, high-contrast Streak card
+  Widget _buildStreakCard(bool isDark) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? [const Color(0xFF101C33), const Color(0xFF070D18)]
-              : [const Color(0xFFEBF2FA), Colors.white],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFE2C374).withValues(alpha: isDark ? 0.35 : 0.45),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFE2C374).withValues(alpha: isDark ? 0.12 : 0.08),
-            blurRadius: 30,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Greeting Pill
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE2C374).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE2C374).withValues(alpha: 0.3)),
-            ),
-            child: Text(
-              'Salam, $greetingName',
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFFE2C374),
-                letterSpacing: 0.3,
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-          // Circular Radial Progress with Golden Glow
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              // Outer ambient glow ring
-              Container(
-                width: 150,
-                height: 150,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFE2C374).withValues(alpha: 0.25),
-                      blurRadius: 24,
-                      spreadRadius: 4,
-                    ),
-                  ],
-                ),
-              ),
-              // Circular progress track
-              SizedBox(
-                width: 140,
-                height: 140,
-                child: CircularProgressIndicator(
-                  value: 0.70, // 70% completed today
-                  strokeWidth: 8,
-                  backgroundColor: isDark ? Colors.white10 : Colors.black12,
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE2C374)),
-                  strokeCap: StrokeCap.round,
-                ),
-              ),
-              // Center Streak Display
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Text(
-                        '7',
-                        style: TextStyle(
-                          fontSize: 44,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFFE2C374),
-                          letterSpacing: -1,
-                        ),
-                      ),
-                      SizedBox(width: 4),
-                      Icon(Icons.local_fire_department_rounded, color: Color(0xFFE2C374), size: 36),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'DAYS',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 2,
-                      color: isDark ? Colors.grey[400] : Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-
-          // Subtitle
-          const Text(
-            'Consecutive Days of Taqarrub',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.4,
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Progress line
-          Text(
-            '2 of 3 Spiritual Goals Recited Today',
-            style: TextStyle(
-              fontSize: 13,
-              color: isDark ? Colors.grey[400] : Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRoutineCard({
-    required String title,
-    required String category,
-    required String status,
-    required bool isCompleted,
-    required bool isDark,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0D172A) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isCompleted
-              ? const Color(0xFF00C48C).withValues(alpha: 0.3)
-              : const Color(0xFFE2C374).withValues(alpha: 0.25),
-          width: 1.2,
+          color: const Color(0xFFE2C374).withValues(alpha: isDark ? 0.4 : 0.6),
+          width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 12,
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+            blurRadius: 14,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isCompleted
-                  ? const Color(0xFF00C48C).withValues(alpha: 0.15)
-                  : const Color(0xFFE2C374).withValues(alpha: 0.15),
-            ),
-            child: Icon(
-              isCompleted ? Icons.check_circle_rounded : Icons.auto_stories_rounded,
-              color: isCompleted ? const Color(0xFF00C48C) : const Color(0xFFE2C374),
-              size: 22,
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFE2C374).withValues(alpha: 0.15),
+                ),
+                child: const Icon(
+                  Icons.local_fire_department_rounded,
+                  color: Color(0xFFE2C374),
+                  size: 34,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '7 DAY STREAK',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '2 of 3 Goals Done Today',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.grey[400] : Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: LinearProgressIndicator(
+              value: 0.66,
+              minHeight: 12,
+              backgroundColor: isDark ? Colors.white12 : Colors.grey[200],
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE2C374)),
             ),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  category,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDark ? Colors.grey[400] : Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (isCompleted)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFF00C48C).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF00C48C).withValues(alpha: 0.5)),
-              ),
-              child: const Text(
-                'Completed',
-                style: TextStyle(
-                  color: Color(0xFF00C48C),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
-                ),
-              ),
-            )
-          else
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE2C374),
-                foregroundColor: Colors.black,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () {},
-              child: const Text(
-                'Recite Now',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-              ),
-            ),
         ],
       ),
     );
   }
 
-  Widget _buildPrayerTrackerPill(bool isDark) {
+  /// Big Shia Prayer Window Card
+  Widget _buildPrayerCard(bool isDark) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0D172A) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+          color: const Color(0xFFE2C374).withValues(alpha: isDark ? 0.35 : 0.5),
+          width: 1.8,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.access_time_filled_rounded, color: Color(0xFFE2C374), size: 18),
-              const SizedBox(width: 8),
-              Text(
-                'Next: Maghribain Prayer Window',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.grey[200] : Colors.black87,
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+                ),
+                child: const Icon(
+                  Icons.wb_sunny_rounded,
+                  color: Color(0xFF3B82F6),
+                  size: 32,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Zuhr & Asr Prayers',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Active Now • Ends at 6:45 PM',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? Colors.grey[400] : Colors.grey[700],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE2C374).withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            height: 56, // Senior-friendly 56dp tap target
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              onPressed: () {},
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.check_rounded, size: 24),
+                  SizedBox(width: 8),
+                  Text(
+                    'Mark Prayed',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
             ),
-            child: const Text(
-              '6:45 PM',
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Big Sacred Dua Card with Large Arabic & Action
+  Widget _buildDuaCard(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0D172A) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFFE2C374).withValues(alpha: isDark ? 0.35 : 0.5),
+          width: 1.8,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Dua-e-Ahad',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Large clear Arabic Calligraphy snippet
+          Center(
+            child: Text(
+              'اَللَّهُمَّ رَبَّ النُّورِ الْعَظِيمِ',
+              textAlign: TextAlign.center,
+              textDirection: TextDirection.rtl,
               style: TextStyle(
-                color: Color(0xFFE2C374),
+                fontSize: 28, // High-contrast, large Naskh font for easy elderly reading
                 fontWeight: FontWeight.bold,
-                fontSize: 12,
+                height: 1.6,
+                color: isDark ? const Color(0xFFE2C374) : const Color(0xFF1E293B),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            height: 56, // Senior-friendly 56dp tap target
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE2C374),
+                foregroundColor: Colors.black,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              onPressed: () {},
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.menu_book_rounded, size: 22),
+                  SizedBox(width: 8),
+                  Text(
+                    'Read with Large Font',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
             ),
           ),
