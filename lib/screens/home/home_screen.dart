@@ -50,8 +50,8 @@ class HomeScreen extends ConsumerWidget {
       ),
       body: userProfileAsync.when(
         data: (user) {
-          final greetingName = user?.name.isNotEmpty == true ? user!.name : 'Believer';
-          final initial = greetingName.isNotEmpty ? greetingName[0].toUpperCase() : 'M';
+          final greetingName = user?.name.isNotEmpty == true ? user!.name : 'Ali';
+          final initial = greetingName.isNotEmpty ? greetingName[0].toUpperCase() : 'A';
 
           return ListView(
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
