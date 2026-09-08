@@ -18,7 +18,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   late int _currentIndex;
 
   final List<Widget> _screens = const [
-    HomeScreen(),
+    HomeScreen(), // Main Goals & Streaks dashboard
     QuranDuasScreen(),
     AskScreen(),
     CommunityScreen(),
@@ -49,12 +49,12 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
               return const TextStyle(
                 color: Color(0xFFD4AF37),
                 fontWeight: FontWeight.bold,
-                fontSize: 12,
+                fontSize: 11.5,
               );
             }
             return TextStyle(
               color: isDark ? Colors.grey[400] : Colors.grey[700],
-              fontSize: 12,
+              fontSize: 11.5,
             );
           }),
           iconTheme: WidgetStateProperty.resolveWith((states) {
@@ -68,35 +68,43 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           }),
         ),
         child: NavigationBar(
-          height: 68, // Ensures comfortable tap targets >= 48dp
+          height: 70, // Ensures comfortable tap targets >= 48dp
           selectedIndex: _currentIndex,
           onDestinationSelected: (index) {
             setState(() => _currentIndex = index);
           },
           backgroundColor: isDark ? const Color(0xFF141D26) : Colors.white,
           elevation: 4,
-          destinations: const [
+          destinations: [
             NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home_rounded),
-              label: 'Home',
+              icon: const Badge(
+                backgroundColor: Color(0xFFD4AF37),
+                label: Text('🔥', style: TextStyle(fontSize: 10)),
+                child: Icon(Icons.local_fire_department_outlined),
+              ),
+              selectedIcon: const Badge(
+                backgroundColor: Color(0xFFD4AF37),
+                label: Text('🔥', style: TextStyle(fontSize: 10)),
+                child: Icon(Icons.local_fire_department_rounded),
+              ),
+              label: 'Streaks & Goals',
             ),
-            NavigationDestination(
+            const NavigationDestination(
               icon: Icon(Icons.auto_stories_outlined),
               selectedIcon: Icon(Icons.auto_stories_rounded),
               label: 'Quran & Duas',
             ),
-            NavigationDestination(
+            const NavigationDestination(
               icon: Icon(Icons.chat_bubble_outline_rounded),
               selectedIcon: Icon(Icons.chat_bubble_rounded),
               label: 'Ask',
             ),
-            NavigationDestination(
+            const NavigationDestination(
               icon: Icon(Icons.people_outline_rounded),
               selectedIcon: Icon(Icons.people_rounded),
               label: 'Community',
             ),
-            NavigationDestination(
+            const NavigationDestination(
               icon: Icon(Icons.person_outline_rounded),
               selectedIcon: Icon(Icons.person_rounded),
               label: 'Profile',
