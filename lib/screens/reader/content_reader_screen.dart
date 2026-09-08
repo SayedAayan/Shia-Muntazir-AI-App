@@ -198,6 +198,15 @@ class _ContentReaderScreenState extends ConsumerState<ContentReaderScreen> {
           error: (err, stack) => const Text('Error'),
         ),
         actions: [
+          // Translation Selector BottomSheet
+          IconButton(
+            icon: Icon(
+              Icons.translate_rounded,
+              color: isDark ? Colors.white70 : const Color(0xFF1B2A3D),
+            ),
+            tooltip: 'Translation Language',
+            onPressed: () => _showTranslationBottomSheet(context, isDark),
+          ),
           // Quick Font Size Adjuster
           IconButton(
             icon: Icon(
@@ -235,9 +244,6 @@ class _ContentReaderScreenState extends ConsumerState<ContentReaderScreen> {
 
     return Column(
       children: [
-        // Translation Selection Chips
-        _buildTranslationSelector(isDark),
-
         // Audio Player Bar
         if (content.audioUrl != null && content.audioUrl!.isNotEmpty)
           _buildAudioPlayerCard(content.audioUrl!, isDark),
@@ -295,9 +301,9 @@ class _ContentReaderScreenState extends ConsumerState<ContentReaderScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Full Arabic Text Card
+              // Full Arabic Text Card with generous line spacing
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF17202C) : Colors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -319,9 +325,9 @@ class _ContentReaderScreenState extends ConsumerState<ContentReaderScreen> {
                   textDirection: TextDirection.rtl,
                   style: TextStyle(
                     fontSize: _arabicFontSize,
-                    height: 2.0,
+                    height: 2.2,
                     fontWeight: FontWeight.w500,
-                    letterSpacing: 0.2,
+                    letterSpacing: 0.3,
                     color: isDark ? Colors.white : const Color(0xFF1B2A3D),
                   ),
                 ),
@@ -379,75 +385,108 @@ class _ContentReaderScreenState extends ConsumerState<ContentReaderScreen> {
                     ],
                   ),
                 ),
-              const SizedBox(height: 100), // Space for bottom action bar
+              const SizedBox(height: 40),
             ],
           ),
         ),
 
-        // Sticky Bottom Action Bar
-        _buildBottomActionBar(content, isDark),
+        // Sticky Bottom Action Bar (Only shown when opened as part of an active goal)
+        if (widget.goalId != null)
+          _buildBottomActionBar(content, isDark),
       ],
     );
   }
 
-  /// Translation selector chips
-  Widget _buildTranslationSelector(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF141C26) : const Color(0xFFF2ECE1),
-        border: Border(
-          bottom: BorderSide(
-            color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
-          ),
-        ),
+  /// Translation selector bottom sheet
+  void _showTranslationBottomSheet(BuildContext context, bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF17202C) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Row(
-        children: [
-          _buildChip('English', 'en', isDark),
-          const SizedBox(width: 8),
-          _buildChip('اردو (Urdu)', 'ur', isDark),
-          const SizedBox(width: 8),
-          _buildChip('हिंदी (Hindi)', 'hi', isDark),
-          const SizedBox(width: 8),
-          _buildChip('Arabic only', 'none', isDark),
-        ],
-      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Choose Translation',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : const Color(0xFF1B2A3D),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTranslationOption('English Translation', 'en', isDark, setModalState),
+                  _buildTranslationOption('Urdu Translation (اردو ترجمہ)', 'ur', isDark, setModalState),
+                  _buildTranslationOption('Hindi / Hinglish (हिंदी अनुवाद)', 'hi', isDark, setModalState),
+                  _buildTranslationOption('Arabic Only (No translation)', 'none', isDark, setModalState),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
-  Widget _buildChip(String label, String code, bool isDark) {
+  Widget _buildTranslationOption(
+    String title,
+    String code,
+    bool isDark,
+    void Function(void Function()) setModalState,
+  ) {
     final isSelected = _selectedTranslation == code;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedTranslation = code),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? const Color(0xFFC27351) // Terracotta
-                : (isDark ? const Color(0xFF1C2736) : Colors.white),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: isSelected
-                  ? const Color(0xFFC27351)
-                  : (isDark ? Colors.white12 : Colors.grey.shade300),
-            ),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected
-                  ? Colors.white
-                  : (isDark ? Colors.white70 : const Color(0xFF1B2A3D)),
-            ),
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? const Color(0xFFC27351).withValues(alpha: 0.12)
+            : (isDark ? const Color(0xFF10161E) : const Color(0xFFFBF9F4)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isSelected
+              ? const Color(0xFFC27351)
+              : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+          width: isSelected ? 1.5 : 1.0,
+        ),
+      ),
+      child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        leading: Icon(
+          isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+          color: isSelected ? const Color(0xFFC27351) : Colors.grey,
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 14.5,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isDark ? Colors.white : const Color(0xFF1B2A3D),
           ),
         ),
+        onTap: () {
+          setState(() => _selectedTranslation = code);
+          setModalState(() {});
+          Navigator.of(context).pop();
+        },
       ),
     );
   }
@@ -511,7 +550,7 @@ class _ContentReaderScreenState extends ConsumerState<ContentReaderScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Audio Recitation (Free CDN)',
+                      'Audio Recitation',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,

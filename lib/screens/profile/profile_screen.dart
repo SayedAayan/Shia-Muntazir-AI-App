@@ -132,16 +132,16 @@ class ProfileScreen extends ConsumerWidget {
               ListTile(
                 leading: const Icon(Icons.language_rounded),
                 title: const Text('Language'),
-                subtitle: Text(user?.language.toUpperCase() ?? 'EN'),
+                subtitle: Text(_getLanguageName(user?.language ?? 'en')),
                 trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {},
+                onTap: () => _showLanguagePicker(context, ref, user?.language ?? 'en', user?.uid),
               ),
               ListTile(
                 leading: const Icon(Icons.account_balance_rounded),
                 title: const Text('Marja-e-Taqleed'),
                 subtitle: Text(user?.marja.toUpperCase() ?? 'SISTANI'),
                 trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {},
+                onTap: () => _showMarjaPicker(context, ref, user?.marja ?? 'sistani', user?.uid),
               ),
               const Divider(height: 32),
 
@@ -167,6 +167,115 @@ class ProfileScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => Center(child: Text('Error: $err')),
       ),
+    );
+  }
+
+  String _getLanguageName(String code) {
+    switch (code) {
+      case 'ur':
+        return 'Urdu (اردو)';
+      case 'hi':
+        return 'Hindi / Transliteration (हिंदी)';
+      case 'gu':
+        return 'Gujarati (ગુજરાતી)';
+      case 'en':
+      default:
+        return 'English';
+    }
+  }
+
+  void _showLanguagePicker(BuildContext context, WidgetRef ref, String currentLang, String? uid) {
+    final languages = [
+      {'code': 'en', 'title': 'English (Default App Language)'},
+      {'code': 'ur', 'title': 'Urdu (اردو ترجمہ)'},
+      {'code': 'hi', 'title': 'Hindi / Hinglish (हिंदी अनुवाद)'},
+      {'code': 'gu', 'title': 'Gujarati (ગુજરાતી અનુવાદ)'},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Select App Language', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 14),
+              ...languages.map((l) {
+                final isSelected = currentLang == l['code'];
+                return ListTile(
+                  title: Text(l['title']!, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                  trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: Color(0xFFC27351)) : null,
+                  onTap: () {
+                    if (uid != null) {
+                      ref.read(userServiceProvider).updateUserField(uid, 'language', l['code']!);
+                    }
+                    Navigator.of(ctx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Language updated to ${l['title']}!')),
+                    );
+                  },
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showMarjaPicker(BuildContext context, WidgetRef ref, String currentMarja, String? uid) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Select Marja-e-Taqleed', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 14),
+              ListTile(
+                title: const Text('Grand Ayatollah Sayyid Ali al-Sistani', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Najaf al-Ashraf'),
+                trailing: currentMarja.toLowerCase().contains('sistani') ? const Icon(Icons.check_circle_rounded, color: Color(0xFFC27351)) : null,
+                onTap: () {
+                  if (uid != null) {
+                    ref.read(userServiceProvider).updateUserField(uid, 'marja', 'sistani');
+                  }
+                  Navigator.of(ctx).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Marja updated to Ayatollah Sistani.')),
+                  );
+                },
+              ),
+              ListTile(
+                title: const Text('Grand Ayatollah Sayyid Ali Khamenei', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Tehran / Qum'),
+                trailing: currentMarja.toLowerCase().contains('khamenei') ? const Icon(Icons.check_circle_rounded, color: Color(0xFFC27351)) : null,
+                onTap: () {
+                  if (uid != null) {
+                    ref.read(userServiceProvider).updateUserField(uid, 'marja', 'khamenei');
+                  }
+                  Navigator.of(ctx).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Marja updated to Ayatollah Khamenei.')),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

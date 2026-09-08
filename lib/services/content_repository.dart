@@ -3,6 +3,7 @@ import '../models/companion_models.dart';
 import '../models/content_model.dart';
 import '../models/goal_model.dart';
 import 'content_seeder.dart';
+import 'quran_service.dart';
 
 class ContentRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -31,17 +32,57 @@ class ContentRepository {
         .where('type', isEqualTo: type)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
+      final list = snapshot.docs
           .map((doc) => ContentModel.fromMap(doc.data(), doc.id))
+          .toList();
+      if (list.isNotEmpty) return list;
+      // Fallback to local verified seed
+      return ContentSeeder.defaultContentSeed
+          .where((item) => item.type.toLowerCase() == type.toLowerCase())
+          .toList();
+    }).handleError((_) {
+      return ContentSeeder.defaultContentSeed
+          .where((item) => item.type.toLowerCase() == type.toLowerCase())
           .toList();
     });
   }
 
-  /// Get single content item by ID
+  /// Get single content item by ID with comprehensive fallbacks
   Future<ContentModel?> getContentById(String contentId) async {
-    final doc = await _contentCollection.doc(contentId).get();
-    if (!doc.exists || doc.data() == null) return null;
-    return ContentModel.fromMap(doc.data()!, doc.id);
+    try {
+      final doc = await _contentCollection.doc(contentId).get();
+      if (doc.exists && doc.data() != null) {
+        return ContentModel.fromMap(doc.data()!, doc.id);
+      }
+    } catch (_) {}
+
+    // Check aliases (e.g. surah_al_fatiha vs surah_fatiha)
+    final normalizedId = (contentId == 'surah_al_fatiha' || contentId == 'surah_1')
+        ? 'surah_fatiha'
+        : contentId;
+
+    for (final seed in ContentSeeder.defaultContentSeed) {
+      if (seed.contentId == normalizedId || seed.contentId == contentId) {
+        return seed;
+      }
+    }
+
+    // Check if it is a Surah by number
+    if (contentId.startsWith('surah_')) {
+      final part = contentId.replaceFirst('surah_', '');
+      final surahNum = int.tryParse(part);
+      if (surahNum != null) {
+        final meta = QuranService.getSurahByNumber(surahNum);
+        if (meta != null) {
+          final content = await QuranService.fetchSurahContent(meta);
+          // Cache in background
+          saveContentItem(content);
+          return content;
+        }
+      }
+    }
+
+    return null;
   }
 
   /// Filter content by keyword / tags

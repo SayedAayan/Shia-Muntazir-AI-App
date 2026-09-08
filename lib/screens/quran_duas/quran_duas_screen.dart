@@ -48,7 +48,7 @@ class _QuranDuasScreenState extends ConsumerState<QuranDuasScreen> {
               Tab(text: 'Holy Quran'),
               Tab(text: 'Duas'),
               Tab(text: 'Ziyarat'),
-              Tab(text: 'Qadha Tracker'),
+              Tab(text: 'Prayer Check-In'),
             ],
           ),
         ),
@@ -128,20 +128,13 @@ class _QuranDuasScreenState extends ConsumerState<QuranDuasScreen> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () async {
-            // Check if it's Surah Al-Fatiha or Surah Yasin (seeded in Firestore)
+          onTap: () {
             if (surah.number == 1) {
-              context.push('/reader/surah_al_fatiha');
+              context.push('/reader/surah_fatiha');
             } else if (surah.number == 36) {
               context.push('/reader/surah_yasin');
             } else {
-              // Fetch dynamically and save to repository cache
-              final repo = ref.read(contentRepositoryProvider);
-              final content = await QuranService.fetchSurahContent(surah);
-              await repo.saveContentItem(content);
-              if (mounted) {
-                context.push('/reader/${content.contentId}');
-              }
+              context.push('/reader/surah_${surah.number}');
             }
           },
           child: Padding(

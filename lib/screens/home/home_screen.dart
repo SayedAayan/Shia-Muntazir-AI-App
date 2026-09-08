@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../models/companion_models.dart';
 import '../../models/goal_model.dart';
+import '../../models/user_model.dart';
 import '../../providers/content_provider.dart';
 import '../../providers/goals_provider.dart';
 import '../../providers/user_provider.dart';
+import '../main_navigation_shell.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -20,10 +22,24 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF10161E) : const Color(0xFFFBF9F4),
+      drawer: userProfileAsync.value != null
+          ? _buildAppDrawer(context, ref, userProfileAsync.value!, isDark)
+          : null,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: Icon(
+              Icons.menu_rounded,
+              color: isDark ? Colors.white : const Color(0xFF1B2A3D),
+              size: 26,
+            ),
+            tooltip: 'Navigation Menu',
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          ),
+        ),
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -216,7 +232,7 @@ class HomeScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 12),
-        _buildQuickAccessRow(context, isDark),
+        _buildQuickAccessRow(context, ref, isDark),
         const SizedBox(height: 32),
       ],
     );
@@ -236,40 +252,45 @@ class HomeScreen extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              dateStr,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.2,
-                color: isDark ? Colors.grey[400] : Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 4),
-            RichText(
-              text: TextSpan(
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                dateStr,
                 style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : const Color(0xFF1B2A3D),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
                 ),
-                children: [
-                  const TextSpan(text: 'Assalamu alaykum, '),
-                  TextSpan(
-                    text: name,
-                    style: const TextStyle(color: Color(0xFFC27351)),
-                  ),
-                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              RichText(
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+                text: TextSpan(
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : const Color(0xFF1B2A3D),
+                  ),
+                  children: [
+                    const TextSpan(text: 'Assalamu alaykum,\n'),
+                    TextSpan(
+                      text: name,
+                      style: const TextStyle(color: Color(0xFFC27351)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
+        const SizedBox(width: 14),
         // User Initial Avatar Circle in Terracotta
         CircleAvatar(
-          radius: 20,
+          radius: 22,
           backgroundColor: const Color(0xFFC27351),
           child: Text(
             initial,
@@ -745,42 +766,31 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  /// Quick access cards at the bottom
-  Widget _buildQuickAccessRow(BuildContext context, bool isDark) {
+  /// Quick access cards at the bottom - fixes Priority 1.3 text cut-off
+  Widget _buildQuickAccessRow(BuildContext context, WidgetRef ref, bool isDark) {
     return Row(
       children: [
         Expanded(
-          child: GestureDetector(
-            onTap: () => context.push('/reader/dua_ahad'),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => ref.read(bottomNavIndexProvider.notifier).setIndex(2), // Switch to Read tab
             child: _buildQuickAccessItem('Read', Icons.menu_book_rounded, isDark),
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Switched to Ask tab.'),
-                  duration: Duration(seconds: 1),
-                ),
-              );
-            },
-            child: _buildQuickAccessItem('Ask a...', Icons.chat_bubble_outline_rounded, isDark),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => ref.read(bottomNavIndexProvider.notifier).setIndex(3), // Switch to Ask tab
+            child: _buildQuickAccessItem('Ask AI', Icons.chat_bubble_outline_rounded, isDark),
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Switched to Around You / Community tab.'),
-                  duration: Duration(seconds: 1),
-                ),
-              );
-            },
-            child: _buildQuickAccessItem('Find...', Icons.location_on_outlined, isDark),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => ref.read(bottomNavIndexProvider.notifier).setIndex(4), // Switch to Community tab
+            child: _buildQuickAccessItem('Find Masjid', Icons.location_on_outlined, isDark),
           ),
         ),
       ],
@@ -789,22 +799,33 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildQuickAccessItem(String label, IconData icon, bool isDark) {
     return Container(
-      height: 72,
-      padding: const EdgeInsets.all(12),
+      constraints: const BoxConstraints(minHeight: 82),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF17202C) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
         ),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(icon, size: 20, color: const Color(0xFFC27351)),
+          Icon(icon, size: 22, color: const Color(0xFFC27351)),
+          const SizedBox(height: 8),
           Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
@@ -812,6 +833,186 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// App Navigation Drawer for account-level items (Priority 6)
+  Widget _buildAppDrawer(BuildContext context, WidgetRef ref, UserModel user, bool isDark) {
+    final drawerBg = isDark ? const Color(0xFF121B27) : const Color(0xFFFAF8F5);
+    final textCol = isDark ? Colors.white : const Color(0xFF1B2A3D);
+    final isScholar = user.role == 'scholar';
+
+    return Drawer(
+      backgroundColor: drawerBg,
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Top User Profile Header
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF182230) : const Color(0xFFEDE8E1),
+                border: Border(
+                  bottom: BorderSide(
+                    color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundColor: const Color(0xFFC27351),
+                    child: Text(
+                      (user.name.isNotEmpty ? user.name[0] : 'M').toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user.name.isNotEmpty ? user.name : 'Muntazir Seeker',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: textCol,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Marja: ${user.marja.toUpperCase()}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFFC27351),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Navigation Options
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.person_outline_rounded, color: Color(0xFFC27351)),
+                    title: Text('Profile & Settings', style: TextStyle(color: textCol, fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Language, Marja, Font size & Theme', style: TextStyle(fontSize: 11)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.push('/profile');
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.wb_sunny_outlined, color: Color(0xFFC27351)),
+                    title: Text('Daily Practices & Streaks', style: TextStyle(color: textCol, fontWeight: FontWeight.w600)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      ref.read(bottomNavIndexProvider.notifier).setIndex(1);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.menu_book_rounded, color: Color(0xFFC27351)),
+                    title: Text('Holy Quran & Library', style: TextStyle(color: textCol, fontWeight: FontWeight.w600)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      ref.read(bottomNavIndexProvider.notifier).setIndex(2);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFFC27351)),
+                    title: Text('Ask Muntazir AI', style: TextStyle(color: textCol, fontWeight: FontWeight.w600)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      ref.read(bottomNavIndexProvider.notifier).setIndex(3);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.groups_rounded, color: Color(0xFFC27351)),
+                    title: Text('Community & Venues', style: TextStyle(color: textCol, fontWeight: FontWeight.w600)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      ref.read(bottomNavIndexProvider.notifier).setIndex(4);
+                    },
+                  ),
+                  if (isScholar) ...[
+                    const Divider(height: 20),
+                    ListTile(
+                      leading: const Icon(Icons.verified_rounded, color: Color(0xFFD4AF37)),
+                      title: Text('Scholar Dashboard', style: TextStyle(color: textCol, fontWeight: FontWeight.bold)),
+                      subtitle: const Text('Answer submitted community fiqh questions', style: TextStyle(fontSize: 11)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/scholar-dashboard');
+                      },
+                    ),
+                  ],
+                  const Divider(height: 24),
+                  ListTile(
+                    leading: const Icon(Icons.info_outline_rounded, color: Colors.grey),
+                    title: Text('About Muntazir', style: TextStyle(color: textCol, fontWeight: FontWeight.w500)),
+                    subtitle: const Text('Version 1.0.0 • Shia Islamic AI Companion', style: TextStyle(fontSize: 11)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      showAboutDialog(
+                        context: context,
+                        applicationName: 'Muntazir',
+                        applicationVersion: '1.0.0',
+                        applicationIcon: const CircleAvatar(
+                          backgroundColor: Color(0xFF1B2A3D),
+                          child: Icon(Icons.auto_awesome, color: Color(0xFFD4AF37)),
+                        ),
+                        children: const [
+                          Text('Dedicated Shia Islamic companion for spiritual growth, authentic Fiqh guidance according to Grand Ayatollah Sistani and Ayatollah Khamenei, Holy Quran recitation, Duas, prayer reminders, and community mosque locator.'),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            // Sign out button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red[400],
+                    side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await ref.read(userServiceProvider).signOut();
+                    if (context.mounted) {
+                      context.go('/onboarding');
+                    }
+                  },
+                  icon: const Icon(Icons.logout_rounded, size: 18),
+                  label: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

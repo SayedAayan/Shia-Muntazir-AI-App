@@ -7,6 +7,7 @@ import '../screens/main_navigation_shell.dart';
 import '../screens/reader/content_reader_screen.dart';
 import '../screens/goals/create_goal_screen.dart';
 import '../screens/scholar/scholar_dashboard_screen.dart';
+import '../screens/profile/profile_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -42,6 +43,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/scholar-dashboard',
         builder: (context, state) => const ScholarDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const ProfileScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

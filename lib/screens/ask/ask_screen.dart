@@ -19,6 +19,7 @@ class _AskScreenState extends ConsumerState<AskScreen>
   // AI Chat state
   final _chatInputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _chatFocusNode = FocusNode();
   String _selectedMarja = 'sistani';
   bool _isAiResponding = false;
   final List<Map<String, String>> _messages = [
@@ -37,6 +38,11 @@ class _AskScreenState extends ConsumerState<AskScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _chatFocusNode.addListener(() {
+      if (_chatFocusNode.hasFocus) {
+        Future.delayed(const Duration(milliseconds: 250), _scrollToBottom);
+      }
+    });
   }
 
   @override
@@ -45,6 +51,7 @@ class _AskScreenState extends ConsumerState<AskScreen>
     _chatInputController.dispose();
     _scholarQuestionController.dispose();
     _scrollController.dispose();
+    _chatFocusNode.dispose();
     super.dispose();
   }
 
@@ -169,6 +176,7 @@ class _AskScreenState extends ConsumerState<AskScreen>
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: isDark ? const Color(0xFF10161E) : const Color(0xFFFBF9F4),
       appBar: AppBar(
         backgroundColor: isDark ? const Color(0xFF17202C) : Colors.white,
@@ -384,6 +392,8 @@ class _AskScreenState extends ConsumerState<AskScreen>
                 Expanded(
                   child: TextField(
                     controller: _chatInputController,
+                    focusNode: _chatFocusNode,
+                    onTap: () => Future.delayed(const Duration(milliseconds: 250), _scrollToBottom),
                     style: TextStyle(color: isDark ? Colors.white : const Color(0xFF1B2A3D)),
                     decoration: InputDecoration(
                       hintText: 'Ask a Fiqh or spiritual question...',
