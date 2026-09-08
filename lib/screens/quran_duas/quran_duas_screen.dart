@@ -3,12 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../models/content_model.dart';
 import '../../providers/content_provider.dart';
+import '../../services/quran_service.dart';
+import 'qadha_tracker_widget.dart';
 
-class QuranDuasScreen extends ConsumerWidget {
+class QuranDuasScreen extends ConsumerStatefulWidget {
   const QuranDuasScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<QuranDuasScreen> createState() => _QuranDuasScreenState();
+}
+
+class _QuranDuasScreenState extends ConsumerState<QuranDuasScreen> {
+  String _quranSearch = '';
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -45,17 +54,164 @@ class QuranDuasScreen extends ConsumerWidget {
         ),
         body: TabBarView(
           children: [
-            _buildContentList(ref, 'surah', isDark),
-            _buildContentList(ref, 'dua', isDark),
-            _buildContentList(ref, 'ziyarat', isDark),
-            _buildQadhaPlaceholder(isDark),
+            _buildQuranTab(isDark),
+            _buildContentList('dua', isDark),
+            _buildContentList('ziyarat', isDark),
+            const QadhaTrackerWidget(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildContentList(WidgetRef ref, String type, bool isDark) {
+  Widget _buildQuranTab(bool isDark) {
+    final filteredSurahs = QuranService.allSurahs.where((s) {
+      if (_quranSearch.isEmpty) return true;
+      final q = _quranSearch.toLowerCase();
+      return s.englishName.toLowerCase().contains(q) ||
+          s.englishNameTranslation.toLowerCase().contains(q) ||
+          s.nameArabic.contains(q) ||
+          s.number.toString() == q;
+    }).toList();
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+          child: TextField(
+            onChanged: (val) => setState(() => _quranSearch = val),
+            style: TextStyle(color: isDark ? Colors.white : const Color(0xFF1B2A3D)),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFC27351)),
+              hintText: 'Search Surah by name or number (e.g. Yasin, 36)...',
+              hintStyle: TextStyle(
+                color: isDark ? Colors.grey[500] : Colors.grey[400],
+                fontSize: 13,
+              ),
+              filled: true,
+              fillColor: isDark ? const Color(0xFF17202C) : Colors.white,
+              contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: isDark ? Colors.white12 : Colors.grey.shade300,
+                ),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+            itemCount: filteredSurahs.length,
+            itemBuilder: (context, index) {
+              final surah = filteredSurahs[index];
+              return _buildSurahCard(surah, isDark);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSurahCard(SurahMeta surah, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF17202C) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () async {
+            // Check if it's Surah Al-Fatiha or Surah Yasin (seeded in Firestore)
+            if (surah.number == 1) {
+              context.push('/reader/surah_al_fatiha');
+            } else if (surah.number == 36) {
+              context.push('/reader/surah_yasin');
+            } else {
+              // Fetch dynamically and save to repository cache
+              final repo = ref.read(contentRepositoryProvider);
+              final content = await QuranService.fetchSurahContent(surah);
+              await repo.saveContentItem(content);
+              if (mounted) {
+                context.push('/reader/${content.contentId}');
+              }
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                // Surah Number Diamond/Circle
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFC27351).withValues(alpha: isDark ? 0.2 : 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '${surah.number}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: Color(0xFFC27351),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+
+                // English Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        surah.englishName,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : const Color(0xFF1B2A3D),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${surah.englishNameTranslation} • ${surah.numberOfAyahs} verses',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Arabic Name
+                Text(
+                  surah.nameArabic,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFFC28B45), // Ochre Gold
+                  ),
+                  textDirection: TextDirection.rtl,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContentList(String type, bool isDark) {
     final contentAsync = ref.watch(contentByTypeStreamProvider(type));
 
     return contentAsync.when(
@@ -79,7 +235,7 @@ class QuranDuasScreen extends ConsumerWidget {
           itemCount: items.length,
           itemBuilder: (context, index) {
             final item = items[index];
-            return _buildContentCard(context, item, isDark);
+            return _buildContentCard(item, isDark);
           },
         );
       },
@@ -92,7 +248,7 @@ class QuranDuasScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildContentCard(BuildContext context, ContentModel item, bool isDark) {
+  Widget _buildContentCard(ContentModel item, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
@@ -202,51 +358,6 @@ class QuranDuasScreen extends ConsumerWidget {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQadhaPlaceholder(bool isDark) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: const Color(0xFFC28B45).withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.calendar_today_rounded,
-                color: Color(0xFFC28B45),
-                size: 28,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              'Qadha Tracker',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF1B2A3D),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Track missed Salah & Sawm according to your Marja\'s guidelines. Coming in Phase 7.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13.5,
-                color: isDark ? Colors.grey[400] : Colors.grey[600],
-                height: 1.4,
-              ),
-            ),
-          ],
         ),
       ),
     );

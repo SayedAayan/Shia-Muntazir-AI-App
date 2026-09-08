@@ -148,17 +148,21 @@ class HomeScreen extends ConsumerWidget {
                 color: isDark ? Colors.white : const Color(0xFF1B2A3D),
               ),
             ),
-            Text(
-              'See all',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFFC27351), // Terracotta
+            TextButton.icon(
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFC27351),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              ),
+              onPressed: () => context.push('/create-goal'),
+              icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+              label: const Text(
+                'New practice',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
 
         // Dynamic Practice Cards
         if (goals.isEmpty)

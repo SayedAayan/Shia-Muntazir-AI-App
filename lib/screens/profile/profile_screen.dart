@@ -61,21 +61,27 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
 
-              // Scholar Question Queue Section (Gated by role == 'scholar' as per Section 3.8)
-              if (isScholar) ...[
-                Text('Scholar Portal', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: const Color(0xFFD4AF37))),
-                const SizedBox(height: 8),
-                ListTile(
-                  tileColor: const Color(0xFF1B3B5A).withValues(alpha: 0.1),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  leading: const Icon(Icons.question_answer_rounded, color: Color(0xFFD4AF37)),
-                  title: const Text('Answer Unclaimed Questions', style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Review questions waiting for scholar guidance'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () {},
+              // Scholar Question Queue Section
+              Text(
+                'Scholar Portal',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFFC27351),
                 ),
-                const SizedBox(height: 24),
-              ],
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                tileColor: const Color(0xFFC27351).withValues(alpha: 0.1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                leading: const Icon(Icons.school_rounded, color: Color(0xFFC27351)),
+                title: const Text('Scholar Question Queue', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Review and answer community fiqh questions'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  context.push('/scholar-dashboard');
+                },
+              ),
+              const SizedBox(height: 24),
 
               // Appearance Settings
               Text('Appearance', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),

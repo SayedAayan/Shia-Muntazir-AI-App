@@ -46,6 +46,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   audioplayers: ^6.8.1
+  latlong2: ^0.10.1
 
 dev_dependencies:
   flutter_test:
