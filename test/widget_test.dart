@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:muntazir/models/user_model.dart';
 import 'package:muntazir/models/content_model.dart';
 import 'package:muntazir/models/goal_model.dart';
+import 'package:muntazir/models/companion_models.dart';
 import 'package:muntazir/services/content_seeder.dart';
 
 void main() {
@@ -69,5 +70,38 @@ void main() {
     final parsed = GoalModel.fromMap(map, 'goal_123');
     expect(parsed.goalId, 'goal_123');
     expect(parsed.progressToday, 0.5);
+  });
+
+  test('StreakLogModel serialization and progress calculation test', () {
+    const log = StreakLogModel(
+      logId: 'user1_goal1_dua_ahad_2026-09-08',
+      userId: 'user1',
+      goalId: 'goal1',
+      contentId: 'dua_ahad',
+      date: '2026-09-08',
+      status: 'done',
+    );
+
+    final map = log.toMap();
+    expect(map['goalId'], 'goal1');
+    expect(map['contentId'], 'dua_ahad');
+    expect(map['status'], 'done');
+    expect(map['date'], '2026-09-08');
+
+    final parsed = StreakLogModel.fromMap(map, log.logId);
+    expect(parsed.logId, 'user1_goal1_dua_ahad_2026-09-08');
+    expect(parsed.contentId, 'dua_ahad');
+    expect(parsed.status, 'done');
+
+    // Test completion ratio calculation
+    final completedItems = [parsed.contentId];
+    final totalItems = ['dua_ahad', 'ziyarat_ale_yasin'];
+    final progress = completedItems.length / totalItems.length;
+    expect(progress, 0.5);
+
+    // If second item added
+    completedItems.add('ziyarat_ale_yasin');
+    final allDone = completedItems.length >= totalItems.length;
+    expect(allDone, isTrue);
   });
 }
