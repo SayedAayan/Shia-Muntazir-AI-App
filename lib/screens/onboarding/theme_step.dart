@@ -186,7 +186,7 @@ class _ThemeStepState extends ConsumerState<ThemeStep> {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected ? const Color(0xFFD4AF37) : (isDark ? Colors.grey[800]! : Colors.grey[300]!),
-            width: isSelected ? 2.0 : 1.0,
+            width: 2.0,
           ),
         ),
         child: Row(
@@ -225,12 +225,18 @@ class _ThemeStepState extends ConsumerState<ThemeStep> {
                 ],
               ),
             ),
-            if (isSelected)
-              const Icon(
-                Icons.check_circle_rounded,
-                color: Color(0xFFD4AF37),
-                size: 24,
-              ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: isSelected
+                  ? const Icon(
+                      Icons.check_circle_rounded,
+                      color: Color(0xFFD4AF37),
+                      size: 24,
+                    )
+                  : null,
+            ),
           ],
         ),
       ),

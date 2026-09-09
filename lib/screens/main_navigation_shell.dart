@@ -30,8 +30,8 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
   final List<Widget> _screens = const [
     HomeScreen(),
     GoalsStreaksScreen(),
-    QuranDuasScreen(),
     AskScreen(),
+    QuranDuasScreen(),
     CommunityScreen(),
   ];
 
@@ -50,7 +50,7 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
     final currentIndex = ref.watch(bottomNavIndexProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    const activeColor = Color(0xFFC27351); // Terracotta from screenshot
+    const activeColor = Color(0xFFC27351); // Terracotta
     final inactiveColor = isDark ? Colors.grey[500] : Colors.grey[600];
 
     return Scaffold(
@@ -83,22 +83,22 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
                 ),
                 _buildNavItem(
                   index: 1,
-                  icon: Icons.wb_sunny_outlined,
+                  icon: Icons.local_fire_department_rounded,
                   label: 'Streaks',
                   activeColor: activeColor,
                   inactiveColor: inactiveColor,
                 ),
                 _buildNavItem(
                   index: 2,
-                  icon: Icons.menu_book_rounded,
-                  label: 'Read',
+                  icon: Icons.chat_bubble_rounded,
+                  label: 'Ask',
                   activeColor: activeColor,
                   inactiveColor: inactiveColor,
                 ),
                 _buildNavItem(
                   index: 3,
-                  icon: Icons.chat_bubble_outline_rounded,
-                  label: 'Ask',
+                  icon: Icons.menu_book_rounded,
+                  label: 'Read',
                   activeColor: activeColor,
                   inactiveColor: inactiveColor,
                 ),

@@ -6,6 +6,7 @@ class ContentModel {
   final String translationEn;
   final String translationUr;
   final String translationHi;
+  final String translationGu;
   final String? audioUrl;
   final List<String> tags; // e.g. ["arbaeen", "muharram", "morning"]
 
@@ -17,6 +18,7 @@ class ContentModel {
     required this.translationEn,
     required this.translationUr,
     required this.translationHi,
+    this.translationGu = '',
     this.audioUrl,
     required this.tags,
   });
@@ -30,6 +32,7 @@ class ContentModel {
       'translation_en': translationEn,
       'translation_ur': translationUr,
       'translation_hi': translationHi,
+      'translation_gu': translationGu,
       'audio_url': audioUrl,
       'tags': tags,
     };
@@ -44,6 +47,7 @@ class ContentModel {
       translationEn: map['translation_en'] as String? ?? '',
       translationUr: map['translation_ur'] as String? ?? '',
       translationHi: map['translation_hi'] as String? ?? '',
+      translationGu: map['translation_gu'] as String? ?? '',
       audioUrl: map['audio_url'] as String?,
       tags: (map['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
     );

@@ -224,14 +224,13 @@ class GoalsStreaksScreen extends ConsumerWidget {
               final dayIndex = index + 1;
               final dayDate = monday.add(Duration(days: index));
               final isToday = dayIndex == currentWeekday;
-              final isPast = dayIndex < currentWeekday;
               final dayDateStr =
                   '${dayDate.year}-${dayDate.month.toString().padLeft(2, '0')}-${dayDate.day.toString().padLeft(2, '0')}';
 
               final hasCompleted = weekLogs.any(
                 (log) => log.date == dayDateStr && log.status == 'done',
               );
-              final isDone = hasCompleted || (isPast && maxStreak >= (currentWeekday - dayIndex));
+              final isDone = hasCompleted;
 
               return Column(
                 children: [
@@ -516,7 +515,55 @@ class GoalsStreaksScreen extends ConsumerWidget {
                 },
                 child: const Text('Open Reader', style: TextStyle(fontSize: 13)),
               ),
+              const Spacer(),
+              // Remove Goal Action (C.13)
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, size: 20, color: Colors.grey),
+                tooltip: 'Remove Practice',
+                onPressed: () => _confirmRemoveGoal(context, ref, goal),
+              ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmRemoveGoal(BuildContext context, WidgetRef ref, GoalModel goal) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Remove Practice?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(
+          'Are you sure you want to remove "${goal.title}" from your active goals? Your past streak history will be preserved.',
+          style: const TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              final repo = ref.read(contentRepositoryProvider);
+              await repo.deleteGoal(goal.goalId);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Removed "${goal.title}" from active goals.'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            child: const Text('Remove'),
           ),
         ],
       ),

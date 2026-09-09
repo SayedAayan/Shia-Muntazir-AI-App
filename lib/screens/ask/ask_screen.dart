@@ -20,7 +20,6 @@ class _AskScreenState extends ConsumerState<AskScreen>
   final _chatInputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _chatFocusNode = FocusNode();
-  String _selectedMarja = 'sistani';
   bool _isAiResponding = false;
   final List<Map<String, String>> _messages = [
     {
@@ -70,9 +69,11 @@ class _AskScreenState extends ConsumerState<AskScreen>
     _scrollToBottom();
 
     try {
+      final userProfile = ref.read(currentUserProfileProvider).value;
+      final marjaName = ((userProfile?.marja ?? '').toLowerCase() == 'khamenei') ? 'Khamenei' : 'Sistani';
       final response = await AiService.askSpiritualQuestion(
         question: query,
-        marja: _selectedMarja == 'sistani' ? 'Sistani' : 'Khamenei',
+        marja: marjaName,
       );
 
       if (mounted) {
@@ -126,13 +127,16 @@ class _AskScreenState extends ConsumerState<AskScreen>
       final userId = authUser?.uid ?? 'guest_user';
       final questionId = 'q_${DateTime.now().millisecondsSinceEpoch}';
 
+      final userProfile = ref.read(currentUserProfileProvider).value;
+      final marjaName = ((userProfile?.marja ?? '').toLowerCase() == 'khamenei') ? 'khamenei' : 'sistani';
+
       final question = QuestionModel(
         questionId: questionId,
         userId: userId,
         text: text,
         status: 'pending_scholar',
         marjaComparison: [
-          {'marja': _selectedMarja}
+          {'marja': marjaName}
         ],
         createdAt: DateTime.now(),
       );
@@ -202,39 +206,27 @@ class _AskScreenState extends ConsumerState<AskScreen>
           ],
         ),
       ),
-      body: Column(
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        color: isDark ? const Color(0xFF17202C) : const Color(0xFFF6F4EF),
+        child: SafeArea(
+          top: false,
+          child: Text(
+            'Informational only • Please confirm with your Marja\'s office for binding fatwas',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 10.5,
+              color: isDark ? Colors.grey[400] : Colors.grey[600],
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          // Religious Disclaimer Banner (Required by prompt)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            color: isDark ? const Color(0xFF26200A) : const Color(0xFFFFF9E6),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline_rounded, size: 20, color: Color(0xFFB8860B)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Informational only. Please confirm with your Marja\'s office for binding fatwas.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? const Color(0xFFE8C86A) : const Color(0xFF7A5900),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildAiChatTab(isDark),
-                _buildAskScholarTab(isDark),
-              ],
-            ),
-          ),
+          _buildAiChatTab(isDark),
+          _buildAskScholarTab(isDark),
         ],
       ),
     );
@@ -243,45 +235,6 @@ class _AskScreenState extends ConsumerState<AskScreen>
   Widget _buildAiChatTab(bool isDark) {
     return Column(
       children: [
-        // Marja Selection Header Bar
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: isDark ? const Color(0xFF141C26) : const Color(0xFFF2ECE1),
-          child: Row(
-            children: [
-              Text(
-                'Marja:',
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white70 : const Color(0xFF1B2A3D),
-                ),
-              ),
-              const SizedBox(width: 8),
-              ChoiceChip(
-                label: const Text('Ayatollah Sistani', style: TextStyle(fontSize: 11)),
-                selected: _selectedMarja == 'sistani',
-                selectedColor: const Color(0xFFC27351),
-                labelStyle: TextStyle(
-                  color: _selectedMarja == 'sistani' ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
-                  fontWeight: FontWeight.w600,
-                ),
-                onSelected: (_) => setState(() => _selectedMarja = 'sistani'),
-              ),
-              const SizedBox(width: 8),
-              ChoiceChip(
-                label: const Text('Ayatollah Khamenei', style: TextStyle(fontSize: 11)),
-                selected: _selectedMarja == 'khamenei',
-                selectedColor: const Color(0xFFC27351),
-                labelStyle: TextStyle(
-                  color: _selectedMarja == 'khamenei' ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
-                  fontWeight: FontWeight.w600,
-                ),
-                onSelected: (_) => setState(() => _selectedMarja = 'khamenei'),
-              ),
-            ],
-          ),
-        ),
 
         // Quick Suggestion Chips
         if (_messages.length <= 1)

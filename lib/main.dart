@@ -4,6 +4,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'firebase_options.dart';
+import 'l10n/app_localizations.dart';
+import 'providers/locale_provider.dart';
 import 'providers/theme_provider.dart';
 import 'routes/app_router.dart';
 import 'services/content_seeder.dart';
@@ -41,6 +43,7 @@ class MuntazirApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeProvider);
     final fontScale = ref.watch(fontScaleProvider);
+    final currentLocale = ref.watch(localeProvider);
 
     return MaterialApp.router(
       title: 'Muntazir',
@@ -49,7 +52,9 @@ class MuntazirApp extends ConsumerWidget {
       themeMode: themeMode,
       theme: _buildLightTheme(),
       darkTheme: _buildDarkTheme(),
+      locale: currentLocale,
       localizationsDelegates: const [
+        AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,

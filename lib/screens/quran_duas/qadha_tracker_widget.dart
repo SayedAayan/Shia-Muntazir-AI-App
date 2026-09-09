@@ -49,16 +49,16 @@ class _QadhaTrackerWidgetState extends ConsumerState<QadhaTrackerWidget> {
 
   Map<String, int> _counts = {
     'Fajr': 0,
-    'Dhuhr': 15,
-    'Asr': 15,
-    'Maghrib': 8,
-    'Isha': 8,
-    'Roza (Fast)': 5,
+    'Dhuhr': 0,
+    'Asr': 0,
+    'Maghrib': 0,
+    'Isha': 0,
+    'Roza (Fast)': 0,
   };
 
   // Status for today: null = pending, true = fulfilled (Yes), false = missed (No / Qadha)
   Map<String, bool?> _todayStatus = {
-    'Fajr': true,
+    'Fajr': null,
     'Dhuhr': null,
     'Asr': null,
     'Maghrib': null,
@@ -68,6 +68,7 @@ class _QadhaTrackerWidgetState extends ConsumerState<QadhaTrackerWidget> {
 
   PrayerTimesModel? _prayerTimes;
   bool _isLoading = true;
+  bool _isRamadanActive = false;
 
   // Local dated logs
   final Map<String, List<DatedQadhaEntry>> _datedEntries = {};
@@ -80,11 +81,31 @@ class _QadhaTrackerWidgetState extends ConsumerState<QadhaTrackerWidget> {
 
   Future<void> _initData() async {
     await Future.wait([
+      _checkRamadanStatus(),
       _loadQadhaData(),
       _loadPrayerTimes(),
       _loadDatedEntries(),
     ]);
     if (mounted) setState(() => _isLoading = false);
+  }
+
+  Future<void> _checkRamadanStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _isRamadanActive = prefs.getBool('ramadan_roza_active') ?? false;
+
+      final configDoc = await FirebaseFirestore.instance
+          .collection('config')
+          .doc('app_settings')
+          .get();
+      if (configDoc.exists && configDoc.data() != null) {
+        final active = configDoc.data()!['ramadan_roza_active'] as bool?;
+        if (active != null) {
+          _isRamadanActive = active;
+          await prefs.setBool('ramadan_roza_active', active);
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadPrayerTimes() async {
@@ -395,7 +416,9 @@ class _QadhaTrackerWidgetState extends ConsumerState<QadhaTrackerWidget> {
       return const Center(child: CircularProgressIndicator(color: Color(0xFFC27351)));
     }
 
-    final totalRemaining = _counts.values.fold<int>(0, (acc, val) => acc + val);
+    final totalRemaining = _counts.entries
+        .where((e) => _isRamadanActive || !e.key.contains('Roza'))
+        .fold<int>(0, (acc, entry) => acc + entry.value);
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
@@ -439,7 +462,8 @@ class _QadhaTrackerWidgetState extends ConsumerState<QadhaTrackerWidget> {
         _buildCheckInCard('Asr', _prayerTimes?.asr ?? '15:38', isDark),
         _buildCheckInCard('Maghrib', _prayerTimes?.maghrib ?? '18:32', isDark),
         _buildCheckInCard('Isha', _prayerTimes?.isha ?? '19:48', isDark),
-        _buildCheckInCard('Roza (Fast)', 'Dawn to Maghrib', isDark, isRoza: true),
+        if (_isRamadanActive)
+          _buildCheckInCard('Roza (Fast)', 'Dawn to Maghrib', isDark, isRoza: true),
 
         const SizedBox(height: 24),
 
@@ -474,7 +498,9 @@ class _QadhaTrackerWidgetState extends ConsumerState<QadhaTrackerWidget> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '$totalRemaining prayers & fasts',
+                    _isRamadanActive
+                        ? '$totalRemaining prayers & fasts'
+                        : '$totalRemaining prayers owed',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -509,7 +535,9 @@ class _QadhaTrackerWidgetState extends ConsumerState<QadhaTrackerWidget> {
         const SizedBox(height: 20),
 
         Text(
-          'Daily Obligatory Prayers (Wajib) & Fasts',
+          _isRamadanActive
+              ? 'Daily Obligatory Prayers (Wajib) & Fasts'
+              : 'Daily Obligatory Prayers (Wajib)',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -518,7 +546,9 @@ class _QadhaTrackerWidgetState extends ConsumerState<QadhaTrackerWidget> {
         ),
         const SizedBox(height: 12),
 
-        ..._counts.entries.map((entry) {
+        ..._counts.entries
+            .where((entry) => _isRamadanActive || !entry.key.contains('Roza'))
+            .map((entry) {
           final name = entry.key;
           final count = entry.value;
           final isFast = name.contains('Roza');

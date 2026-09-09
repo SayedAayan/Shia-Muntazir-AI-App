@@ -5,6 +5,8 @@ import '../../models/content_model.dart';
 import '../../providers/content_provider.dart';
 import '../../providers/goals_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../services/ayat_tracker_service.dart';
+import '../../services/reader_preferences_service.dart';
 
 class ContentReaderScreen extends ConsumerStatefulWidget {
   final String contentId;
@@ -30,13 +32,38 @@ class _ContentReaderScreenState extends ConsumerState<ContentReaderScreen> {
 
   // Reader customization state
   double _arabicFontSize = 26.0;
-  String _selectedTranslation = 'en'; // 'en', 'ur', 'hi', 'none'
+  String _selectedTranslation = 'en'; // 'en', 'ur', 'hi', 'gu', 'none'
+  bool _isInlineTranslation = true;
   bool _isRecitedToday = false;
+  bool _isFavorite = false;
+  int _lastReadVerse = 0;
+
+  final ScrollController _scrollController = ScrollController();
+  final Map<int, GlobalKey> _verseKeys = {};
+  bool _hasTrackedAyatToday = false;
 
   @override
   void initState() {
     super.initState();
     _initAudioPlayer();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    await ReaderPreferencesService.init();
+    final isFav = ReaderPreferencesService.isFavorite(widget.contentId);
+    final lastRead = await ReaderPreferencesService.getLastReadVerse(widget.contentId);
+    final isInline = await ReaderPreferencesService.isInlineTranslationEnabled();
+    final fontSize = await ReaderPreferencesService.getArabicFontSize();
+
+    if (mounted) {
+      setState(() {
+        _isFavorite = isFav;
+        _lastReadVerse = lastRead;
+        _isInlineTranslation = isInline;
+        _arabicFontSize = fontSize;
+      });
+    }
   }
 
   void _initAudioPlayer() {
@@ -52,15 +79,11 @@ class _ContentReaderScreenState extends ConsumerState<ContentReaderScreen> {
     });
 
     _audioPlayer.onDurationChanged.listen((d) {
-      if (mounted) {
-        setState(() => _duration = d);
-      }
+      if (mounted) setState(() => _duration = d);
     });
 
     _audioPlayer.onPositionChanged.listen((p) {
-      if (mounted) {
-        setState(() => _position = p);
-      }
+      if (mounted) setState(() => _position = p);
     });
 
     _audioPlayer.onPlayerComplete.listen((_) {
@@ -77,6 +100,7 @@ class _ContentReaderScreenState extends ConsumerState<ContentReaderScreen> {
   void dispose() {
     _audioPlayer.stop();
     _audioPlayer.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -98,7 +122,7 @@ class _ContentReaderScreenState extends ConsumerState<ContentReaderScreen> {
       if (mounted) {
         setState(() {
           _isLoadingAudio = false;
-          _audioError = 'Unable to stream audio: $e';
+          _audioError = 'Audio streaming note: Unable to play audio right now.';
         });
       }
     }
@@ -115,10 +139,53 @@ class _ContentReaderScreenState extends ConsumerState<ContentReaderScreen> {
     return '$minutes:$seconds';
   }
 
+  Future<void> _toggleFavorite() async {
+    final newFav = await ReaderPreferencesService.toggleFavorite(widget.contentId);
+    if (mounted) {
+      setState(() => _isFavorite = newFav);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          backgroundColor: newFav ? const Color(0xFFC27351) : Colors.grey[800],
+          behavior: SnackBarBehavior.floating,
+          content: Text(
+            newFav ? 'Added to Favorites' : 'Removed from Favorites',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _saveBookmark(int verseIndex) async {
+    await ReaderPreferencesService.saveLastReadVerse(widget.contentId, verseIndex);
+    if (mounted) {
+      setState(() => _lastReadVerse = verseIndex);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          backgroundColor: const Color(0xFF4D7C68),
+          behavior: SnackBarBehavior.floating,
+          content: Text('Bookmark saved at verse ${verseIndex + 1}'),
+        ),
+      );
+    }
+  }
+
+  void _scrollToBookmark(int verseIndex) {
+    final key = _verseKeys[verseIndex];
+    if (key != null && key.currentContext != null) {
+      Scrollable.ensureVisible(
+        key.currentContext!,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
   Future<void> _markAsRecited(ContentModel content) async {
     final authUser = ref.read(authStateProvider).value;
     final repo = ref.read(contentRepositoryProvider);
-
     final userId = authUser?.uid ?? 'guest_user';
     String? targetGoalId = widget.goalId;
 
@@ -142,34 +209,82 @@ class _ContentReaderScreenState extends ConsumerState<ContentReaderScreen> {
       );
     }
 
+    // Auto-record ayat reading for Quran content (A.3)
+    if (content.type == 'surah' && !_hasTrackedAyatToday) {
+      final verses = _parseVerses(content);
+      await AyatTrackerService.recordAyatRead(verses.length);
+      _hasTrackedAyatToday = true;
+    }
+
     if (mounted) {
       setState(() => _isRecitedToday = true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: const Color(0xFF4D7C68), // Sage Green
+          backgroundColor: const Color(0xFF4D7C68),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           content: Row(
-            children: [
-              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Barakallah! "${content.title}" marked as recited.',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
+            children: const [
+              Icon(Icons.check_circle_rounded, color: Colors.white),
+              SizedBox(width: 10),
+              Text(
+                'Recitation logged! May Allah accept your deed.',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ],
           ),
-          duration: const Duration(seconds: 3),
         ),
       );
     }
   }
 
+  List<String> _parseVerses(ContentModel content) {
+    if (content.arabicText.contains('۝')) {
+      return content.arabicText
+          .split('۝')
+          .map((v) => v.replaceAll(RegExp(r'[\d٠-٩]'), '').trim())
+          .where((v) => v.isNotEmpty)
+          .toList();
+    }
+    return content.arabicText
+        .split('\n')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  List<String> _parseTranslations(ContentModel content, String lang) {
+    String text;
+    switch (lang) {
+      case 'ur':
+        text = content.translationUr;
+        break;
+      case 'hi':
+        text = content.translationHi;
+        break;
+      case 'gu':
+        text = content.translationGu.isNotEmpty
+            ? content.translationGu
+            : content.translationEn;
+        break;
+      case 'en':
+      default:
+        text = content.translationEn;
+        break;
+    }
+
+    if (text.contains('۝')) {
+      return text
+          .split('۝')
+          .map((v) => v.replaceAll(RegExp(r'[\d٠-٩]'), '').trim())
+          .where((v) => v.isNotEmpty)
+          .toList();
+    }
+    return text.split('\n').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final contentAsync = ref.watch(contentDetailProvider(widget.contentId));
+    final contentAsync = ref.watch(contentByIdProvider(widget.contentId));
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -185,20 +300,43 @@ class _ContentReaderScreenState extends ConsumerState<ContentReaderScreen> {
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: contentAsync.when(
-          data: (content) => Text(
-            content?.title ?? 'Spiritual Reader',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : const Color(0xFF1B2A3D),
-            ),
+        title: Text(
+          'Recitation',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            color: isDark ? Colors.white : const Color(0xFF1B2A3D),
           ),
-          loading: () => const Text('Loading...'),
-          error: (err, stack) => const Text('Error'),
         ),
         actions: [
-          // Translation Selector BottomSheet
+          // Favorite Star Toggle (C.4 / C.18)
+          IconButton(
+            icon: Icon(
+              _isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+              color: _isFavorite
+                  ? const Color(0xFFD4AF37)
+                  : (isDark ? Colors.white70 : const Color(0xFF1B2A3D)),
+              size: 26,
+            ),
+            tooltip: _isFavorite ? 'Remove Favorite' : 'Add to Favorites',
+            onPressed: _toggleFavorite,
+          ),
+
+          // View Mode Switcher (Inline vs Continuous) (C.20)
+          IconButton(
+            icon: Icon(
+              _isInlineTranslation ? Icons.view_agenda_rounded : Icons.view_headline_rounded,
+              color: isDark ? Colors.white70 : const Color(0xFF1B2A3D),
+            ),
+            tooltip: _isInlineTranslation ? 'Switch to Continuous' : 'Switch to Inline',
+            onPressed: () async {
+              final newMode = !_isInlineTranslation;
+              setState(() => _isInlineTranslation = newMode);
+              await ReaderPreferencesService.setInlineTranslationEnabled(newMode);
+            },
+          ),
+
+          // Translation Selector
           IconButton(
             icon: Icon(
               Icons.translate_rounded,
@@ -207,16 +345,17 @@ class _ContentReaderScreenState extends ConsumerState<ContentReaderScreen> {
             tooltip: 'Translation Language',
             onPressed: () => _showTranslationBottomSheet(context, isDark),
           ),
-          // Quick Font Size Adjuster
+
+          // Font Size Adjuster
           IconButton(
             icon: Icon(
               Icons.format_size_rounded,
               color: isDark ? Colors.white70 : const Color(0xFF1B2A3D),
             ),
-            tooltip: 'Adjust Font Size',
+            tooltip: 'Font Size',
             onPressed: () => _showFontSizeBottomSheet(context, isDark),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
         ],
       ),
       body: contentAsync.when(
@@ -224,554 +363,412 @@ class _ContentReaderScreenState extends ConsumerState<ContentReaderScreen> {
           if (content == null) {
             return const Center(child: Text('Content not found.'));
           }
-          return _buildReaderContent(content, isDark);
+
+          // Trigger auto-tracking on Quran surah open
+          if (content.type == 'surah' && !_hasTrackedAyatToday) {
+            final verses = _parseVerses(content);
+            AyatTrackerService.recordAyatRead(verses.length);
+            _hasTrackedAyatToday = true;
+          }
+
+          return _buildReaderCanvas(content, isDark);
         },
         loading: () => const Center(
           child: CircularProgressIndicator(color: Color(0xFFC27351)),
         ),
-        error: (err, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Text('Failed to load text: $err'),
-          ),
-        ),
+        error: (err, _) => Center(child: Text('Error: $err')),
       ),
     );
   }
 
-  Widget _buildReaderContent(ContentModel content, bool isDark) {
-    final translationText = _getTranslationText(content);
+  Widget _buildReaderCanvas(ContentModel content, bool isDark) {
+    final verses = _parseVerses(content);
+    final translations = _parseTranslations(content, _selectedTranslation);
 
     return Column(
       children: [
-        // Audio Player Bar
+        // Audio Player Bar (C.21)
         if (content.audioUrl != null && content.audioUrl!.isNotEmpty)
           _buildAudioPlayerCard(content.audioUrl!, isDark),
+
+        // Bookmark resume alert (C.18)
+        if (_lastReadVerse > 0 && _lastReadVerse < verses.length)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: const Color(0xFF4D7C68).withValues(alpha: 0.15),
+            child: Row(
+              children: [
+                const Icon(Icons.bookmark_added_rounded, size: 18, color: Color(0xFF4D7C68)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Last read at Ayah ${_lastReadVerse + 1}',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF4D7C68),
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _scrollToBookmark(_lastReadVerse),
+                  child: const Text('Resume', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
 
         // Main Scrollable Reader Canvas
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 18.0),
+            controller: _scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
             children: [
-              // Type Badge & Title
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFC27351).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    content.type.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                      color: Color(0xFFC27351),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Center(
-                child: Text(
-                  content.title,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : const Color(0xFF1B2A3D),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
+              // Header Card with metadata
+              _buildHeaderCard(content, isDark),
+              const SizedBox(height: 18),
 
               // Bismillah Divider
               Center(
                 child: Text(
                   'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
                   style: TextStyle(
-                    fontSize: _arabicFontSize * 0.9,
+                    fontSize: _arabicFontSize * 0.95,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFFC28B45), // Ochre Gold
+                    color: const Color(0xFFC28B45),
                     height: 1.8,
                   ),
                   textAlign: TextAlign.center,
                   textDirection: TextDirection.rtl,
                 ),
               ),
-              const SizedBox(height: 24),
-
-              // Full Arabic Text Card with generous line spacing
-              Container(
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF17202C) : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
-                  ),
-                  boxShadow: [
-                    if (!isDark)
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                  ],
-                ),
-                child: Text(
-                  content.arabicText,
-                  textAlign: TextAlign.right,
-                  textDirection: TextDirection.rtl,
-                  style: TextStyle(
-                    fontSize: _arabicFontSize,
-                    height: 2.2,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.3,
-                    color: isDark ? Colors.white : const Color(0xFF1B2A3D),
-                  ),
-                ),
-              ),
               const SizedBox(height: 20),
 
-              // Translation Card
-              if (_selectedTranslation != 'none' && translationText.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF141C26) : const Color(0xFFF3EFE6),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isDark ? Colors.white10 : const Color(0xFFE2DBCF),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.translate_rounded,
-                            size: 16,
-                            color: isDark ? Colors.grey[400] : Colors.grey[700],
+              // Content Layout: Inline Verses vs Continuous View
+              if (_isInlineTranslation)
+                ...List.generate(verses.length, (idx) {
+                  _verseKeys[idx] = GlobalKey();
+                  final arabic = verses[idx];
+                  final trans = idx < translations.length ? translations[idx] : '';
+                  final isBookmarked = _lastReadVerse == idx;
+
+                  return Container(
+                    key: _verseKeys[idx],
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF17202C) : Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: isBookmarked
+                            ? const Color(0xFF4D7C68)
+                            : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+                        width: isBookmarked ? 1.5 : 1.0,
+                      ),
+                      boxShadow: [
+                        if (!isDark)
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _getLanguageLabel(_selectedTranslation),
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: isDark ? Colors.grey[400] : Colors.grey[700],
-                              letterSpacing: 0.8,
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Verse number badge & bookmark button
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFC27351).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'Ayah ${idx + 1}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFC27351),
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                                size: 20,
+                                color: isBookmarked ? const Color(0xFF4D7C68) : Colors.grey[500],
+                              ),
+                              tooltip: 'Bookmark this verse',
+                              onPressed: () => _saveBookmark(idx),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Arabic Verse Text
+                        Text(
+                          '$arabic ۝${idx + 1}',
+                          textAlign: TextAlign.right,
+                          textDirection: TextDirection.rtl,
+                          style: TextStyle(
+                            fontSize: _arabicFontSize,
+                            height: 2.1,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.2,
+                            color: isDark ? Colors.white : const Color(0xFF1B2A3D),
+                          ),
+                        ),
+
+                        // Inline Translation
+                        if (_selectedTranslation != 'none' && trans.isNotEmpty) ...[
+                          const SizedBox(height: 14),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF121A24) : const Color(0xFFF7F4EC),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              trans,
+                              style: TextStyle(
+                                fontSize: 14.5,
+                                height: 1.5,
+                                color: isDark ? Colors.grey[300] : const Color(0xFF334155),
+                              ),
                             ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        translationText,
-                        textAlign: _selectedTranslation == 'ur'
-                            ? TextAlign.right
-                            : TextAlign.left,
-                        textDirection: _selectedTranslation == 'ur'
-                            ? TextDirection.rtl
-                            : TextDirection.ltr,
-                        style: TextStyle(
-                          fontSize: _arabicFontSize * 0.65,
-                          height: 1.7,
-                          color: isDark ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF2C3E50),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 40),
+                      ],
+                    ),
+                  );
+                })
+              else
+                // Continuous View Mode (C.19)
+                _buildContinuousView(content, verses, isDark),
+
+              const SizedBox(height: 24),
+
+              // Bottom Completion Action Button
+              _buildCompleteButton(content),
+              const SizedBox(height: 36),
             ],
           ),
         ),
-
-        // Sticky Bottom Action Bar (Only shown when opened as part of an active goal)
-        if (widget.goalId != null)
-          _buildBottomActionBar(content, isDark),
       ],
     );
   }
 
-  /// Translation selector bottom sheet
-  void _showTranslationBottomSheet(BuildContext context, bool isDark) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: isDark ? const Color(0xFF17202C) : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+  Widget _buildHeaderCard(ContentModel content, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF17202C) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+        ),
       ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Choose Translation',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF1B2A3D),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded),
-                        onPressed: () => Navigator.of(ctx).pop(),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _buildTranslationOption('English Translation', 'en', isDark, setModalState),
-                  _buildTranslationOption('Urdu Translation (اردو ترجمہ)', 'ur', isDark, setModalState),
-                  _buildTranslationOption('Hindi / Hinglish (हिंदी अनुवाद)', 'hi', isDark, setModalState),
-                  _buildTranslationOption('Arabic Only (No translation)', 'none', isDark, setModalState),
-                  const SizedBox(height: 16),
-                ],
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFC27351).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(
+              content.type.toUpperCase(),
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+                color: Color(0xFFC27351),
               ),
-            );
-          },
-        );
-      },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            content.title,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : const Color(0xFF1B2A3D),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildTranslationOption(
-    String title,
-    String code,
-    bool isDark,
-    void Function(void Function()) setModalState,
-  ) {
-    final isSelected = _selectedTranslation == code;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? const Color(0xFFC27351).withValues(alpha: 0.12)
-            : (isDark ? const Color(0xFF10161E) : const Color(0xFFFBF9F4)),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isSelected
-              ? const Color(0xFFC27351)
-              : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
-          width: isSelected ? 1.5 : 1.0,
-        ),
-      ),
-      child: ListTile(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        leading: Icon(
-          isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-          color: isSelected ? const Color(0xFFC27351) : Colors.grey,
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: 14.5,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isDark ? Colors.white : const Color(0xFF1B2A3D),
+  Widget _buildContinuousView(ContentModel content, List<String> verses, bool isDark) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF17202C) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+            ),
+          ),
+          child: Text(
+            content.arabicText,
+            textAlign: TextAlign.right,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontSize: _arabicFontSize,
+              height: 2.2,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+              color: isDark ? Colors.white : const Color(0xFF1B2A3D),
+            ),
           ),
         ),
-        onTap: () {
-          setState(() => _selectedTranslation = code);
-          setModalState(() {});
-          Navigator.of(context).pop();
-        },
+        if (_selectedTranslation != 'none') ...[
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF141C26) : const Color(0xFFF3EFE6),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white10 : const Color(0xFFE2DBCF),
+              ),
+            ),
+            child: Text(
+              _getTranslationText(content),
+              style: TextStyle(
+                fontSize: 15,
+                height: 1.6,
+                color: isDark ? Colors.grey[300] : const Color(0xFF2C3E50),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCompleteButton(ContentModel content) {
+    return SizedBox(
+      height: 54,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _isRecitedToday ? const Color(0xFF334155) : const Color(0xFF4D7C68),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 2,
+        ),
+        onPressed: _isRecitedToday ? null : () => _markAsRecited(content),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              _isRecitedToday ? Icons.check_circle_rounded : Icons.check_circle_outline_rounded,
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              _isRecitedToday ? 'Completed for Today' : 'Mark Recitation Completed',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  /// Audio Player Card with controls and scrub bar
   Widget _buildAudioPlayerCard(String audioUrl, bool isDark) {
     final isPlaying = _playerState == PlayerState.playing;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF17202C) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+          ),
         ),
-        boxShadow: [
-          if (!isDark)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-        ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              // Play / Pause Circle Button
-              GestureDetector(
-                onTap: () => _toggleAudio(audioUrl),
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFFC27351),
-                  ),
-                  child: _isLoadingAudio
-                      ? const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Icon(
-                          isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                          color: Colors.white,
-                          size: 26,
+              IconButton(
+                icon: _isLoadingAudio
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Color(0xFFC27351),
                         ),
-                ),
+                      )
+                    : Icon(
+                        isPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_filled_rounded,
+                        size: 40,
+                        color: const Color(0xFFC27351),
+                      ),
+                onPressed: () => _toggleAudio(audioUrl),
               ),
-              const SizedBox(width: 14),
-
-              // Audio Title & Timing
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Audio Recitation',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : const Color(0xFF1B2A3D),
-                      ),
+                      isPlaying ? 'Audio Recitation Playing' : 'Audio Recitation',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${_formatDuration(_position)} / ${_formatDuration(_duration)}',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 3,
+                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                        activeTrackColor: const Color(0xFFC27351),
+                        inactiveTrackColor: Colors.grey[400],
+                        thumbColor: const Color(0xFFC27351),
+                      ),
+                      child: Slider(
+                        value: _position.inSeconds.toDouble().clamp(
+                              0.0,
+                              _duration.inSeconds > 0 ? _duration.inSeconds.toDouble() : 1.0,
+                            ),
+                        max: _duration.inSeconds > 0 ? _duration.inSeconds.toDouble() : 1.0,
+                        onChanged: (val) => _seekAudio(val),
                       ),
                     ),
                   ],
                 ),
               ),
-
-              // Audio Speed / Restart icon
-              IconButton(
-                icon: Icon(
-                  Icons.replay_rounded,
-                  size: 20,
+              const SizedBox(width: 8),
+              Text(
+                '${_formatDuration(_position)} / ${_formatDuration(_duration)}',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
                   color: isDark ? Colors.grey[400] : Colors.grey[600],
                 ),
-                tooltip: 'Restart',
-                onPressed: () {
-                  _audioPlayer.seek(Duration.zero);
-                },
               ),
             ],
           ),
-
-          // Slider scrub bar
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              trackHeight: 3,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-              activeTrackColor: const Color(0xFFC27351),
-              inactiveTrackColor: isDark ? Colors.white12 : Colors.grey[200],
-              thumbColor: const Color(0xFFC27351),
-            ),
-            child: Slider(
-              min: 0,
-              max: _duration.inSeconds > 0 ? _duration.inSeconds.toDouble() : 1.0,
-              value: _position.inSeconds
-                  .clamp(0, _duration.inSeconds > 0 ? _duration.inSeconds : 1)
-                  .toDouble(),
-              onChanged: _duration.inSeconds > 0 ? _seekAudio : null,
-            ),
-          ),
-
           if (_audioError != null)
             Padding(
               padding: const EdgeInsets.only(top: 4.0),
               child: Text(
                 _audioError!,
-                style: const TextStyle(fontSize: 11, color: Colors.redAccent),
+                style: const TextStyle(color: Colors.redAccent, fontSize: 11),
               ),
             ),
         ],
       ),
-    );
-  }
-
-  /// Sticky Bottom Action Bar with "Mark as Recited"
-  Widget _buildBottomActionBar(ContentModel content, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF10161E) : Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
-          ),
-        ),
-      ),
-      child: SafeArea(
-        child: SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _isRecitedToday
-                  ? const Color(0xFF4D7C68) // Sage Green
-                  : const Color(0xFFC27351), // Terracotta
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              elevation: 0,
-            ),
-            onPressed: () => _markAsRecited(content),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  _isRecitedToday
-                      ? Icons.check_circle_rounded
-                      : Icons.arrow_forward_rounded,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _isRecitedToday ? 'Recited Today ✓' : 'Mark as Recited',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Font Size Adjuster Bottom Sheet
-  void _showFontSizeBottomSheet(BuildContext context, bool isDark) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: isDark ? const Color(0xFF17202C) : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Arabic Text Size',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF1B2A3D),
-                        ),
-                      ),
-                      Text(
-                        '${_arabicFontSize.toInt()} pt',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFFC27351),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.remove_circle_outline_rounded),
-                        color: const Color(0xFFC27351),
-                        iconSize: 28,
-                        onPressed: _arabicFontSize > 18
-                            ? () {
-                                setState(() => _arabicFontSize -= 2);
-                                setModalState(() {});
-                              }
-                            : null,
-                      ),
-                      Expanded(
-                        child: Slider(
-                          min: 18,
-                          max: 42,
-                          divisions: 12,
-                          activeColor: const Color(0xFFC27351),
-                          value: _arabicFontSize,
-                          onChanged: (val) {
-                            setState(() => _arabicFontSize = val);
-                            setModalState(() {});
-                          },
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle_outline_rounded),
-                        color: const Color(0xFFC27351),
-                        iconSize: 28,
-                        onPressed: _arabicFontSize < 42
-                            ? () {
-                                setState(() => _arabicFontSize += 2);
-                                setModalState(() {});
-                              }
-                            : null,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  // Preview box
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF10161E) : const Color(0xFFFBF9F4),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'اَللَّهُمَّ صَلِّ عَلَىٰ مُحَمَّدٍ وَآلِ مُحَمَّدٍ',
-                      textAlign: TextAlign.center,
-                      textDirection: TextDirection.rtl,
-                      style: TextStyle(
-                        fontSize: _arabicFontSize,
-                        color: isDark ? Colors.white : const Color(0xFF1B2A3D),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            );
-          },
-        );
-      },
     );
   }
 
@@ -781,6 +778,10 @@ class _ContentReaderScreenState extends ConsumerState<ContentReaderScreen> {
         return content.translationUr;
       case 'hi':
         return content.translationHi;
+      case 'gu':
+        return content.translationGu.isNotEmpty
+            ? content.translationGu
+            : content.translationEn;
       case 'en':
         return content.translationEn;
       default:
@@ -788,16 +789,100 @@ class _ContentReaderScreenState extends ConsumerState<ContentReaderScreen> {
     }
   }
 
-  String _getLanguageLabel(String code) {
-    switch (code) {
-      case 'ur':
-        return 'URDU TRANSLATION (اردو ترجمہ)';
-      case 'hi':
-        return 'HINDI TRANSLITERATION (हिंदी)';
-      case 'en':
-        return 'ENGLISH TRANSLATION';
-      default:
-        return 'TRANSLATION';
-    }
+  void _showTranslationBottomSheet(BuildContext context, bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final options = [
+          {'code': 'en', 'label': 'English'},
+          {'code': 'ur', 'label': 'Urdu (اردو)'},
+          {'code': 'hi', 'label': 'Hindi (हिन्दी)'},
+          {'code': 'gu', 'label': 'Gujarati (ગુજરાતી)'},
+          {'code': 'none', 'label': 'None (Arabic Only)'},
+        ];
+
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Select Translation', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              ...options.map((opt) {
+                final isSelected = _selectedTranslation == opt['code'];
+                return ListTile(
+                  title: Text(opt['label']!, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                  trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: Color(0xFFC27351)) : null,
+                  onTap: () {
+                    setState(() => _selectedTranslation = opt['code']!);
+                    Navigator.of(ctx).pop();
+                  },
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showFontSizeBottomSheet(BuildContext context, bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Adjust Arabic Font Size', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline_rounded),
+                        onPressed: _arabicFontSize > 18
+                            ? () async {
+                                final newSize = _arabicFontSize - 2;
+                                setState(() => _arabicFontSize = newSize);
+                                setModalState(() {});
+                                await ReaderPreferencesService.saveArabicFontSize(newSize);
+                              }
+                            : null,
+                      ),
+                      Text(
+                        '${_arabicFontSize.toInt()} pt',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline_rounded),
+                        onPressed: _arabicFontSize < 40
+                            ? () async {
+                                final newSize = _arabicFontSize + 2;
+                                setState(() => _arabicFontSize = newSize);
+                                setModalState(() {});
+                                await ReaderPreferencesService.saveArabicFontSize(newSize);
+                              }
+                            : null,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 }

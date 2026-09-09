@@ -171,6 +171,7 @@ class QuranService {
             translationEn: englishText,
             translationUr: 'سورۃ ${surah.englishName} - قرآن مجید کی مقدس سورت۔',
             translationHi: 'सूरह ${surah.englishName} - पवित्र कुरान का अध्याय।',
+            translationGu: 'સૂરહ ${surah.englishName} (${surah.englishNameTranslation}) - પવિત્ર કુર્આનનો અધ્યાય.',
             audioUrl: 'https://cdn.islamic.network/quran/audio-surah/128/ar.alafasy/${surah.number}.mp3',
             tags: ['quran', 'surah', surah.revelationType.toLowerCase()],
           );
@@ -189,6 +190,7 @@ class QuranService {
       translationEn: 'Surah ${surah.englishName} (${surah.englishNameTranslation}). Revealed in ${surah.revelationType}. Total ${surah.numberOfAyahs} verses. In the name of Allah, the Beneficent, the Merciful.',
       translationUr: 'سورۃ ${surah.englishName} (${surah.englishNameTranslation}) - کل ${surah.numberOfAyahs} آیات، مکی/مدنی۔',
       translationHi: 'सूरह ${surah.englishName} (${surah.englishNameTranslation}) - कुल ${surah.numberOfAyahs} आयतें।',
+      translationGu: 'સૂરહ ${surah.englishName} (${surah.englishNameTranslation}) - કુલ ${surah.numberOfAyahs} આયતો. રહેમાન અને રહીમ અલ્લાહના નામ સાથે.',
       audioUrl: 'https://cdn.islamic.network/quran/audio-surah/128/ar.alafasy/${surah.number}.mp3',
       tags: ['quran', 'surah', surah.revelationType.toLowerCase()],
     );

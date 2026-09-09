@@ -22,3 +22,6 @@ final contentDetailProvider =
   final repo = ref.watch(contentRepositoryProvider);
   return repo.getContentById(contentId);
 });
+
+final contentByIdProvider = contentDetailProvider;
+

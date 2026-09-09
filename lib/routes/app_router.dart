@@ -8,6 +8,9 @@ import '../screens/reader/content_reader_screen.dart';
 import '../screens/goals/create_goal_screen.dart';
 import '../screens/scholar/scholar_dashboard_screen.dart';
 import '../screens/profile/profile_screen.dart';
+import '../screens/toolkit/toolkit_screen.dart';
+import '../screens/tools/khums_calculator_screen.dart';
+import '../screens/tools/daily_sadqa_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -47,6 +50,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/profile',
         builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/toolkit',
+        builder: (context, state) => const ToolkitScreen(),
+      ),
+      GoRoute(
+        path: '/khums',
+        builder: (context, state) => const KhumsCalculatorScreen(),
+      ),
+      GoRoute(
+        path: '/sadqa',
+        builder: (context, state) => const DailySadqaScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

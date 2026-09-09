@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../providers/locale_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/user_provider.dart';
 
@@ -212,6 +213,7 @@ class ProfileScreen extends ConsumerWidget {
                   title: Text(l['title']!, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
                   trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: Color(0xFFC27351)) : null,
                   onTap: () {
+                    ref.read(localeProvider.notifier).setLocale(l['code']!);
                     if (uid != null) {
                       ref.read(userServiceProvider).updateUserField(uid, 'language', l['code']!);
                     }

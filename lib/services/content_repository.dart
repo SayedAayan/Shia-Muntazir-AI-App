@@ -146,6 +146,11 @@ class ContentRepository {
         );
   }
 
+  /// Remove an active goal (C.13)
+  Future<void> deleteGoal(String goalId) async {
+    await _goalsCollection.doc(goalId).delete();
+  }
+
   /// Stream streak logs for current week (Monday to Sunday)
   Stream<List<StreakLogModel>> streamUserWeekStreak(String userId) {
     final now = DateTime.now();

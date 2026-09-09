@@ -160,4 +160,61 @@ class NotificationService {
       payload: payload,
     );
   }
+
+  /// Show Wiladat or Shahadat commemoration alert (C.24)
+  static Future<void> showWiladatShahadatAlert({
+    required String eventName,
+    required String personality,
+    required bool isWiladat,
+  }) async {
+    final title = isWiladat
+        ? 'Mubarak! $eventName'
+        : 'Condolences: $eventName';
+    final body = isWiladat
+        ? 'Auspicious birth commemoration of $personality. Today is filled with barakah and joy.'
+        : 'Martyrdom anniversary of $personality. Recite Ziyarat and remember the sacrifices of the Ahlulbayt (a.s.).';
+
+    const androidDetails = AndroidNotificationDetails(
+      'ahlulbayt_occasions',
+      'Wiladat & Shahadat Occasions',
+      channelDescription: 'Notifications for Ahlulbayt (a.s.) holy commemorations',
+      importance: Importance.high,
+      priority: Priority.high,
+      styleInformation: BigTextStyleInformation(''),
+    );
+
+    await _localNotifications.show(
+      id: eventName.hashCode & 0x7FFFFFFF,
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(android: androidDetails),
+      payload: '/toolkit',
+    );
+  }
+
+  /// Show upcoming Venue / Mosque majlis alert (C.25)
+  static Future<void> showVenueEventAlert({
+    required String venueName,
+    required String eventTitle,
+    String? programTime,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'venue_events',
+      'Mosque & Imambargah Events',
+      channelDescription: 'Alerts for followed Shia community centers and upcoming Majalis',
+      importance: Importance.high,
+      priority: Priority.high,
+      styleInformation: BigTextStyleInformation(''),
+    );
+
+    await _localNotifications.show(
+      id: (venueName + eventTitle).hashCode & 0x7FFFFFFF,
+      title: 'Upcoming Program at $venueName',
+      body: programTime != null
+          ? '$eventTitle starting at $programTime. Tap to see directions and details.'
+          : '$eventTitle is scheduled soon. Tap to view details in Community.',
+      notificationDetails: const NotificationDetails(android: androidDetails),
+      payload: 'community_tab',
+    );
+  }
 }

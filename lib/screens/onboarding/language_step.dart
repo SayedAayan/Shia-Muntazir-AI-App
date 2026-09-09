@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../providers/locale_provider.dart';
 import '../../providers/user_provider.dart';
 
 class LanguageStep extends ConsumerStatefulWidget {
@@ -26,12 +27,12 @@ class _LanguageStepState extends ConsumerState<LanguageStep> {
       'code': 'ur',
       'name': 'Urdu',
       'native': 'اردو',
-      'sub': 'اردو ترجمہ اور کتب',
+      'sub': 'اردو ترجمہ و خطاطی',
     },
     {
       'code': 'hi',
-      'name': 'Hindi / Transliteration',
-      'native': 'हिंदी / Hinglish',
+      'name': 'Hindi',
+      'native': 'हिन्दी',
       'sub': 'हिंदी अनुवाद एवं उच्चारण',
     },
     {
@@ -50,6 +51,7 @@ class _LanguageStepState extends ConsumerState<LanguageStep> {
 
   void _submit() {
     ref.read(onboardingProvider.notifier).updateLanguage(_selectedLanguage);
+    ref.read(localeProvider.notifier).setLocale(_selectedLanguage);
     widget.onNext();
   }
 
