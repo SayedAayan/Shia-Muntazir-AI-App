@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'home/home_screen.dart';
 import 'goals/goals_streaks_screen.dart';
+import 'clips/clips_feed_screen.dart';
 import 'quran_duas/quran_duas_screen.dart';
 import 'ask/ask_screen.dart';
 import 'community/community_screen.dart';
-
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class BottomNavNotifier extends Notifier<int> {
   @override
@@ -27,11 +27,13 @@ class MainNavigationShell extends ConsumerStatefulWidget {
 }
 
 class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
+  // 6 Tabs: Home → Goals → Clips → Read → Ask → Community (Part B spec)
   final List<Widget> _screens = const [
     HomeScreen(),
     GoalsStreaksScreen(),
-    AskScreen(),
+    ClipsFeedScreen(),
     QuranDuasScreen(),
+    AskScreen(),
     CommunityScreen(),
   ];
 
@@ -72,7 +74,7 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
           child: SizedBox(
             height: 64,
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _buildNavItem(
                   index: 0,
@@ -84,14 +86,14 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
                 _buildNavItem(
                   index: 1,
                   icon: Icons.local_fire_department_rounded,
-                  label: 'Streaks',
+                  label: 'Goals',
                   activeColor: activeColor,
                   inactiveColor: inactiveColor,
                 ),
                 _buildNavItem(
                   index: 2,
-                  icon: Icons.chat_bubble_rounded,
-                  label: 'Ask',
+                  icon: Icons.play_circle_filled_rounded,
+                  label: 'Clips',
                   activeColor: activeColor,
                   inactiveColor: inactiveColor,
                 ),
@@ -104,6 +106,13 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
                 ),
                 _buildNavItem(
                   index: 4,
+                  icon: Icons.chat_bubble_rounded,
+                  label: 'Ask',
+                  activeColor: activeColor,
+                  inactiveColor: inactiveColor,
+                ),
+                _buildNavItem(
+                  index: 5,
                   icon: Icons.groups_rounded,
                   label: 'Community',
                   activeColor: activeColor,
@@ -126,31 +135,35 @@ class _MainNavigationShellState extends ConsumerState<MainNavigationShell> {
   }) {
     final isSelected = ref.watch(bottomNavIndexProvider) == index;
 
-    return InkWell(
-      onTap: () => ref.read(bottomNavIndexProvider.notifier).setIndex(index),
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        constraints: const BoxConstraints(minWidth: 56, minHeight: 48),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? activeColor : inactiveColor,
-              size: 24,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+    return Expanded(
+      child: InkWell(
+        onTap: () => ref.read(bottomNavIndexProvider.notifier).setIndex(index),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 48), // Minimum 48x48dp tap target
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
                 color: isSelected ? activeColor : inactiveColor,
+                size: 22,
               ),
-            ),
-          ],
+              const SizedBox(height: 3),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected ? activeColor : inactiveColor,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

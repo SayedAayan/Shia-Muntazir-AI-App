@@ -7,7 +7,10 @@ class UserModel {
   final String marja; // "sistani" | "khamenei" | "other: custom text"
   final String language; // "en" | "ur" | "hi" | "gu"
   final String theme; // "light" | "dark" | "system"
-  final String role; // "user" | "scholar" | "admin"
+  final String role; // "user" | "scholar" | "venue_admin" | "admin"
+  final String? venueId; // linked venue for venue_admin
+  final bool? canUploadReel; // permission override (superadmin kill-switch)
+  final String? mobileNumber;
   final DateTime? createdAt;
 
   const UserModel({
@@ -20,8 +23,17 @@ class UserModel {
     required this.language,
     required this.theme,
     this.role = 'user',
+    this.venueId,
+    this.canUploadReel,
+    this.mobileNumber,
     this.createdAt,
   });
+
+  /// True if user is admin, verified scholar, or verified venue admin, unless explicitly revoked
+  bool get hasUploadPermission {
+    if (canUploadReel != null) return canUploadReel!;
+    return role == 'admin' || role == 'scholar' || role == 'venue_admin';
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -34,6 +46,9 @@ class UserModel {
       'language': language,
       'theme': theme,
       'role': role,
+      'venueId': venueId,
+      'can_upload_reel': canUploadReel,
+      'mobile_number': mobileNumber,
       'created_at': createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
     };
   }
@@ -49,6 +64,9 @@ class UserModel {
       language: map['language'] as String? ?? 'en',
       theme: map['theme'] as String? ?? 'system',
       role: map['role'] as String? ?? 'user',
+      venueId: map['venueId'] as String?,
+      canUploadReel: map['can_upload_reel'] as bool?,
+      mobileNumber: map['mobile_number'] as String?,
       createdAt: map['created_at'] != null 
           ? DateTime.tryParse(map['created_at'].toString()) 
           : null,
@@ -65,6 +83,9 @@ class UserModel {
     String? language,
     String? theme,
     String? role,
+    String? venueId,
+    bool? canUploadReel,
+    String? mobileNumber,
     DateTime? createdAt,
   }) {
     return UserModel(
@@ -77,6 +98,9 @@ class UserModel {
       language: language ?? this.language,
       theme: theme ?? this.theme,
       role: role ?? this.role,
+      venueId: venueId ?? this.venueId,
+      canUploadReel: canUploadReel ?? this.canUploadReel,
+      mobileNumber: mobileNumber ?? this.mobileNumber,
       createdAt: createdAt ?? this.createdAt,
     );
   }

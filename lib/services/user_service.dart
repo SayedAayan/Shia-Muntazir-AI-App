@@ -41,13 +41,90 @@ class UserService {
           user.toMap(),
           SetOptions(merge: true),
         );
+    if (user.email.isNotEmpty) {
+      await checkAndApplyPendingRole(user.email, user.uid);
+    }
   }
 
   /// Get user profile by UID
   Future<UserModel?> getUserProfile(String uid) async {
     final doc = await _firestore.collection('users').doc(uid).get();
     if (!doc.exists || doc.data() == null) return null;
-    return UserModel.fromMap(doc.data()!, doc.id);
+    final user = UserModel.fromMap(doc.data()!, doc.id);
+    if (user.email.isNotEmpty && user.role == 'user') {
+      await checkAndApplyPendingRole(user.email, user.uid);
+    }
+    return user;
+  }
+
+  /// Check and apply any pending role assignment for this user's email (Path A)
+  Future<void> checkAndApplyPendingRole(String email, String uid) async {
+    if (email.isEmpty) return;
+    try {
+      final key = email.toLowerCase().trim();
+      final pendingDoc = await _firestore.collection('pending_role_assignments').doc(key).get();
+      if (pendingDoc.exists && pendingDoc.data() != null) {
+        final data = pendingDoc.data()!;
+        final role = data['role'] as String? ?? 'scholar';
+        final venueId = data['venueId'] as String?;
+        await _firestore.collection('users').doc(uid).update({
+          'role': role,
+          'venueId': ?venueId,
+          'can_upload_reel': true,
+        });
+        // Remove pending assignment once claimed
+        await _firestore.collection('pending_role_assignments').doc(key).delete();
+      }
+    } catch (_) {}
+  }
+
+  /// Assign role directly (for Superadmin Path A)
+  Future<bool> assignUserRole({
+    required String emailOrUid,
+    required String role,
+    String? venueId,
+    required String adminUid,
+  }) async {
+    final query = emailOrUid.trim();
+    final isEmail = query.contains('@');
+
+    if (isEmail) {
+      final emailKey = query.toLowerCase();
+      // Check if user already exists
+      final userSnap = await _firestore
+          .collection('users')
+          .where('email', isEqualTo: emailKey)
+          .limit(1)
+          .get();
+
+      if (userSnap.docs.isNotEmpty) {
+        final targetUid = userSnap.docs.first.id;
+        await _firestore.collection('users').doc(targetUid).update({
+          'role': role,
+          'venueId': ?venueId,
+          'can_upload_reel': true,
+        });
+        return true; // Applied immediately
+      } else {
+        // Store as pending role assignment
+        await _firestore.collection('pending_role_assignments').doc(emailKey).set({
+          'email': emailKey,
+          'role': role,
+          'venueId': venueId,
+          'assigned_by': adminUid,
+          'assigned_at': FieldValue.serverTimestamp(),
+        });
+        return false; // Stored as pending
+      }
+    } else {
+      // By UID
+      await _firestore.collection('users').doc(query).update({
+        'role': role,
+        'venueId': ?venueId,
+        'can_upload_reel': true,
+      });
+      return true;
+    }
   }
 
   /// Stream of user profile

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../models/verification_models.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/user_provider.dart';
@@ -22,6 +24,8 @@ class ProfileScreen extends ConsumerWidget {
       body: userProfileAsync.when(
         data: (user) {
           final isScholar = user?.role == 'scholar';
+          final isVenueAdmin = user?.role == 'venue_admin';
+          final isAdmin = user?.role == 'admin';
 
           return ListView(
             padding: const EdgeInsets.all(20.0),
@@ -49,40 +53,221 @@ class ProfileScreen extends ConsumerWidget {
                   '${user?.email ?? ''}\nMarja: ${user?.marja.toUpperCase() ?? 'SISTANI'}',
                   style: const TextStyle(height: 1.4),
                 ),
-                trailing: isScholar
+                trailing: (isScholar || isVenueAdmin || isAdmin)
                     ? Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFD4AF37),
+                          color: isAdmin
+                              ? Colors.red[800]
+                              : (isScholar ? const Color(0xFFD4AF37) : const Color(0xFF4D7C68)),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text('SCHOLAR', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.black)),
+                        child: Text(
+                          isAdmin
+                              ? 'SUPERADMIN'
+                              : (isScholar ? 'SCHOLAR' : 'VENUE ADMIN'),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5, color: Colors.white),
+                        ),
                       )
                     : null,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-              // Scholar Question Queue Section
-              Text(
-                'Scholar Portal',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFFC27351),
+              // Superadmin Dashboard (if admin)
+              if (isAdmin) ...[
+                Text(
+                  'Superadmin Control',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red[700],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                tileColor: const Color(0xFFC27351).withValues(alpha: 0.1),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                leading: const Icon(Icons.school_rounded, color: Color(0xFFC27351)),
-                title: const Text('Scholar Question Queue', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Review and answer community fiqh questions'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  context.push('/scholar-dashboard');
-                },
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 8),
+                ListTile(
+                  tileColor: Colors.red.withValues(alpha: 0.1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  leading: const Icon(Icons.admin_panel_settings_rounded, color: Colors.red),
+                  title: const Text('Superadmin Control Portal', style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: const Text('Review role requests, assign roles & clips moderation'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => context.push('/admin-dashboard'),
+                ),
+                const SizedBox(height: 20),
+              ],
+
+              // Scholar Portal Section (if scholar)
+              if (isScholar) ...[
+                Text(
+                  'Scholar Tools',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFFC27351),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  tileColor: const Color(0xFFC27351).withValues(alpha: 0.1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  leading: const Icon(Icons.school_rounded, color: Color(0xFFC27351)),
+                  title: const Text('Scholar Question Queue', style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: const Text('Review and answer submitted community fiqh questions'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => context.push('/scholar-dashboard'),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  tileColor: const Color(0xFFD4AF37).withValues(alpha: 0.1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  leading: const Icon(Icons.video_call_rounded, color: Color(0xFFB8860B)),
+                  title: const Text('Upload Spiritual Clip', style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: const Text('Share short Fiqh answers and Quran reflections'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => context.push('/clips-upload'),
+                ),
+                const SizedBox(height: 20),
+              ],
+
+              // Venue Admin Section (if venue_admin)
+              if (isVenueAdmin) ...[
+                Text(
+                  'Venue Administration',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF4D7C68),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  tileColor: const Color(0xFF4D7C68).withValues(alpha: 0.1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  leading: const Icon(Icons.video_call_rounded, color: Color(0xFF4D7C68)),
+                  title: const Text('Upload Venue Event Clip', style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: const Text('Post Majlis, Jashn, and community announcements to Clips'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => context.push('/clips-upload'),
+                ),
+                const SizedBox(height: 20),
+              ],
+
+              // Regular User: Verification Application / Status Tracker
+              if (!isScholar && !isVenueAdmin && !isAdmin && user != null) ...[
+                StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: FirebaseFirestore.instance
+                      .collection('role_requests')
+                      .where('requested_by', isEqualTo: user.uid)
+                      .snapshots(),
+                  builder: (context, snap) {
+                    final reqDocs = snap.data?.docs ?? [];
+                    if (reqDocs.isNotEmpty) {
+                      final latestReq = RoleRequestModel.fromMap(reqDocs.first.data(), reqDocs.first.id);
+                      final isPending = latestReq.status == 'pending';
+                      final isRejected = latestReq.status == 'rejected';
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 20),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isPending
+                              ? Colors.orange.withValues(alpha: 0.1)
+                              : (isRejected ? Colors.red.withValues(alpha: 0.08) : Colors.green.withValues(alpha: 0.1)),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isPending ? Colors.orange.withValues(alpha: 0.4) : (isRejected ? Colors.red.withValues(alpha: 0.3) : Colors.green),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  isPending ? Icons.hourglass_top_rounded : (isRejected ? Icons.info_outline_rounded : Icons.check_circle_rounded),
+                                  color: isPending ? Colors.orange[800] : (isRejected ? Colors.red[800] : Colors.green[800]),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Verification Application: ${latestReq.status.toUpperCase()}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: isPending ? Colors.orange[800] : (isRejected ? Colors.red[800] : Colors.green[800]),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              isPending
+                                  ? 'Your application for ${latestReq.requestType == "scholar" ? "Shia Scholar" : "Venue Admin"} is under team review. We may reach you at ${latestReq.mobileNumber}.'
+                                  : (isRejected
+                                      ? 'Your application was not approved at this time. You may review and re-apply with updated credentials.'
+                                      : 'Your application has been approved! Enjoy full access to your new verified tools.'),
+                              style: TextStyle(fontSize: 12.5, color: theme.brightness == Brightness.dark ? Colors.grey[300] : Colors.grey[800], height: 1.35),
+                            ),
+                            if (isRejected) ...[
+                              const SizedBox(height: 10),
+                              OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                onPressed: () => context.push('/verification-request'),
+                                child: const Text('Re-submit Application', style: TextStyle(fontSize: 12)),
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    }
+
+                    // No request made yet: show application button
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 20),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: theme.brightness == Brightness.dark ? const Color(0xFF17202C) : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.verified_rounded, color: Color(0xFFD4AF37), size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Are you a Scholar or Venue Organizer?',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Verified Shia scholars can answer community questions, and venue administrators can post event clips and updates.',
+                            style: TextStyle(fontSize: 12, color: Colors.grey, height: 1.35),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFFC27351),
+                                side: const BorderSide(color: Color(0xFFC27351)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              icon: const Icon(Icons.badge_outlined, size: 18),
+                              label: const Text('Request Verification', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              onPressed: () => context.push('/verification-request'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
 
               // Appearance Settings
               Text('Appearance', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),

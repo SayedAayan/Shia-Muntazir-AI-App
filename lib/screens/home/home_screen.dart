@@ -1211,6 +1211,7 @@ class HomeScreen extends ConsumerWidget {
     final drawerBg = isDark ? const Color(0xFF121B27) : const Color(0xFFFAF8F5);
     final textCol = isDark ? Colors.white : const Color(0xFF1B2A3D);
     final isScholar = user.role == 'scholar';
+    final isAdmin = user.role == 'admin';
 
     return Drawer(
       backgroundColor: drawerBg,
@@ -1296,8 +1297,9 @@ class HomeScreen extends ConsumerWidget {
                     },
                   ),
                   ListTile(
-                    leading: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFFC27351)),
-                    title: Text('Ask Muntazir AI', style: TextStyle(color: textCol, fontWeight: FontWeight.w600)),
+                    leading: const Icon(Icons.video_library_rounded, color: Color(0xFFC27351)),
+                    title: Text('Clips & Reflections', style: TextStyle(color: textCol, fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Short spiritual reels from scholars & centres', style: TextStyle(fontSize: 11)),
                     onTap: () {
                       Navigator.pop(context);
                       ref.read(bottomNavIndexProvider.notifier).setIndex(2);
@@ -1312,11 +1314,19 @@ class HomeScreen extends ConsumerWidget {
                     },
                   ),
                   ListTile(
+                    leading: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFFC27351)),
+                    title: Text('Ask Muntazir AI', style: TextStyle(color: textCol, fontWeight: FontWeight.w600)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      ref.read(bottomNavIndexProvider.notifier).setIndex(4);
+                    },
+                  ),
+                  ListTile(
                     leading: const Icon(Icons.groups_rounded, color: Color(0xFFC27351)),
                     title: Text('Community & Venues', style: TextStyle(color: textCol, fontWeight: FontWeight.w600)),
                     onTap: () {
                       Navigator.pop(context);
-                      ref.read(bottomNavIndexProvider.notifier).setIndex(4);
+                      ref.read(bottomNavIndexProvider.notifier).setIndex(5);
                     },
                   ),
                   const Divider(height: 16),
@@ -1347,6 +1357,15 @@ class HomeScreen extends ConsumerWidget {
                       context.push('/sadqa');
                     },
                   ),
+                  ListTile(
+                    leading: const Icon(Icons.favorite_rounded, color: Color(0xFFC27351)),
+                    title: Text('Support Muntazir', style: TextStyle(color: textCol, fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Contribute voluntarily to keep Muntazir free for all', style: TextStyle(fontSize: 11)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.push('/support');
+                    },
+                  ),
                   if (isScholar) ...[
                     const Divider(height: 20),
                     ListTile(
@@ -1356,6 +1375,18 @@ class HomeScreen extends ConsumerWidget {
                       onTap: () {
                         Navigator.pop(context);
                         context.push('/scholar-dashboard');
+                      },
+                    ),
+                  ],
+                  if (isAdmin) ...[
+                    const Divider(height: 20),
+                    ListTile(
+                      leading: const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFFC27351)),
+                      title: Text('Superadmin Dashboard', style: TextStyle(color: textCol, fontWeight: FontWeight.bold)),
+                      subtitle: const Text('Role verification queue & clip moderation', style: TextStyle(fontSize: 11)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/admin-dashboard');
                       },
                     ),
                   ],

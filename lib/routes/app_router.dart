@@ -11,6 +11,10 @@ import '../screens/profile/profile_screen.dart';
 import '../screens/toolkit/toolkit_screen.dart';
 import '../screens/tools/khums_calculator_screen.dart';
 import '../screens/tools/daily_sadqa_screen.dart';
+import '../screens/profile/verification_request_screen.dart';
+import '../screens/admin/admin_dashboard_screen.dart';
+import '../screens/clips/clip_upload_screen.dart';
+import '../screens/support/support_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -62,6 +66,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/sadqa',
         builder: (context, state) => const DailySadqaScreen(),
+      ),
+      GoRoute(
+        path: '/verification-request',
+        builder: (context, state) => const VerificationRequestScreen(),
+      ),
+      GoRoute(
+        path: '/admin-dashboard',
+        builder: (context, state) => const AdminDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/clips-upload',
+        builder: (context, state) => const ClipUploadScreen(),
+      ),
+      GoRoute(
+        path: '/support',
+        builder: (context, state) => const SupportScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
